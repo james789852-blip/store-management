@@ -85,8 +85,8 @@ export default function SchedulePage() {
     setShowAdd(true)
   }
 
-  async function exportPDF() {
-    window.print()
+  function exportPDF() {
+    window.open(`/stores/${id}/schedule/print`, '_blank')
   }
 
   const done = items.filter(i => i.status === '完成').length

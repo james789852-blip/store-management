@@ -14,6 +14,13 @@ const STATUS_COLOR: Record<string, string> = {
   '歇業': 'bg-red-100 text-red-600',
 }
 
+const SCHEDULE_STATUS_COLOR: Record<string, string> = {
+  '待開始': 'bg-gray-100 text-gray-500',
+  '進行中': 'bg-blue-100 text-blue-700',
+  '完成': 'bg-green-100 text-green-700',
+  '延誤': 'bg-red-100 text-red-600',
+}
+
 const ALL_STATUSES = ['建置中', '試營運', '營運中', '暫停', '歇業']
 
 function daysUntil(dateStr: string | null) {
@@ -26,6 +33,15 @@ function daysSince(dateStr: string | null) {
   return Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000)
 }
 
+interface ScheduleItem {
+  id: string
+  team: string | null
+  task: string
+  start_date: string | null
+  end_date: string | null
+  status: string
+}
+
 export default function OverviewPage() {
   const { id } = useParams<{ id: string }>()
   const [store, setStore] = useState<Store | null>(null)
@@ -33,31 +49,46 @@ export default function OverviewPage() {
   const [editing, setEditing] = useState(false)
   const [form, setForm] = useState<Partial<Store>>({})
   const [saving, setSaving] = useState(false)
-  const [stats, setStats] = useState({ expenses: 0, todos: 0, todosDone: 0, logs: 0 })
+  const [stats, setStats] = useState({ expenses: 0, todos: 0, todosDone: 0 })
   const [recentLogs, setRecentLogs] = useState<{ date: string; description: string; completion_pct: number | null }[]>([])
   const [upcomingTodos, setUpcomingTodos] = useState<{ title: string; due_date: string | null; priority: string }[]>([])
+  const [todaySchedule, setTodaySchedule] = useState<ScheduleItem[]>([])
+  const [weekSchedule, setWeekSchedule] = useState<ScheduleItem[]>([])
 
-  useEffect(() => {
-    loadAll()
-  }, [id])
+  useEffect(() => { loadAll() }, [id])
 
   async function loadAll() {
-    const [{ data: storeData }, { data: expenses }, { data: todos }, { data: logs }] = await Promise.all([
+    const today = new Date().toISOString().slice(0, 10)
+    const weekLater = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10)
+
+    const [{ data: storeData }, { data: expenses }, { data: todos }, { data: logs }, { data: schedule }] = await Promise.all([
       supabase.from('stores').select('*').eq('id', id).single(),
       supabase.from('expenses').select('amount').eq('store_id', id),
       supabase.from('todos').select('status').eq('store_id', id),
       supabase.from('construction_log').select('date, description, completion_pct').eq('store_id', id).order('date', { ascending: false }).limit(3),
+      supabase.from('construction_schedule').select('id, team, task, start_date, end_date, status')
+        .eq('store_id', id).neq('status', '完成').order('start_date', { ascending: true }),
     ])
 
-    if (storeData) {
-      setStore(storeData)
-      setForm(storeData)
-    }
+    if (storeData) { setStore(storeData); setForm(storeData) }
 
     const totalExpenses = (expenses || []).reduce((s, e) => s + (e.amount || 0), 0)
     const todosDone = (todos || []).filter(t => t.status === '完成').length
-    setStats({ expenses: totalExpenses, todos: todos?.length || 0, todosDone, logs: logs?.length || 0 })
+    setStats({ expenses: totalExpenses, todos: todos?.length || 0, todosDone })
     setRecentLogs(logs || [])
+
+    // 今日進行中的工程（start_date <= today <= end_date）
+    const allSchedule = (schedule || []) as ScheduleItem[]
+    const todays = allSchedule.filter(s =>
+      (!s.start_date || s.start_date <= today) &&
+      (!s.end_date || s.end_date >= today)
+    )
+    // 本週即將開始（start_date 在未來 7 天內）
+    const upcoming = allSchedule.filter(s =>
+      s.start_date && s.start_date > today && s.start_date <= weekLater
+    )
+    setTodaySchedule(todays)
+    setWeekSchedule(upcoming)
 
     const { data: pendingTodos } = await supabase.from('todos').select('title, due_date, priority')
       .eq('store_id', id).neq('status', '完成').order('due_date', { ascending: true }).limit(5)
@@ -88,6 +119,7 @@ export default function OverviewPage() {
 
   const days = daysUntil(store.open_date)
   const buildDays = daysSince(store.start_date)
+  const todayStr = new Date().toLocaleDateString('zh-TW', { month: 'long', day: 'numeric', weekday: 'long' })
 
   return (
     <div className="p-8 max-w-4xl">
@@ -107,8 +139,62 @@ export default function OverviewPage() {
         </button>
       </div>
 
+      {/* 今日工程 */}
+      <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="font-bold text-gray-900">今日工程</h2>
+            <p className="text-xs text-gray-400 mt-0.5">{todayStr}</p>
+          </div>
+          <Link href={`/stores/${id}/schedule`} className="text-xs text-blue-500 hover:underline">查看全部排程 →</Link>
+        </div>
+
+        {todaySchedule.length === 0 ? (
+          <div className="text-center py-6 text-gray-400">
+            <p className="text-sm">今日無進行中工程</p>
+            {weekSchedule.length > 0 && (
+              <p className="text-xs mt-1 text-blue-500">本週有 {weekSchedule.length} 項工程即將開始</p>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {todaySchedule.map(s => (
+              <div key={s.id} className="flex items-center gap-3 p-3 bg-blue-50 rounded-xl">
+                <div className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-gray-800 text-sm">{s.task}</p>
+                  {s.team && <p className="text-xs text-gray-500">{s.team}</p>}
+                </div>
+                <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${SCHEDULE_STATUS_COLOR[s.status] || 'bg-gray-100 text-gray-500'}`}>
+                  {s.status}
+                </span>
+                {s.end_date && (
+                  <span className="text-xs text-gray-400 flex-shrink-0">到 {s.end_date}</span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* 本週即將開始 */}
+        {weekSchedule.length > 0 && (
+          <div className="mt-4 pt-4 border-t border-gray-100">
+            <p className="text-xs font-medium text-gray-500 mb-2">本週即將開始</p>
+            <div className="space-y-1.5">
+              {weekSchedule.map(s => (
+                <div key={s.id} className="flex items-center gap-3">
+                  <span className="text-xs text-gray-400 w-20 flex-shrink-0">{s.start_date}</span>
+                  <span className="text-sm text-gray-700">{s.task}</span>
+                  {s.team && <span className="text-xs text-gray-400">· {s.team}</span>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Key stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-white rounded-2xl border border-gray-200 p-5">
           <p className="text-xs text-gray-400 mb-1">累計費用</p>
           <p className="text-xl font-bold text-gray-900">NT$ {stats.expenses.toLocaleString()}</p>
@@ -116,9 +202,7 @@ export default function OverviewPage() {
         </div>
         <div className="bg-white rounded-2xl border border-gray-200 p-5">
           <p className="text-xs text-gray-400 mb-1">{days !== null && days >= 0 ? '距開幕' : '已開幕'}</p>
-          <p className="text-xl font-bold text-gray-900">
-            {days !== null ? `${Math.abs(days)} 天` : '未設定'}
-          </p>
+          <p className="text-xl font-bold text-gray-900">{days !== null ? `${Math.abs(days)} 天` : '未設定'}</p>
           {store.open_date && <p className="text-xs text-gray-400 mt-1">{store.open_date}</p>}
         </div>
         <div className="bg-white rounded-2xl border border-gray-200 p-5">
@@ -133,7 +217,7 @@ export default function OverviewPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         {/* Basic info */}
         <div className="bg-white rounded-2xl border border-gray-200 p-6">
           <h2 className="font-semibold text-gray-900 mb-4">基本資訊</h2>
@@ -174,9 +258,7 @@ export default function OverviewPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
                       <p className="text-xs text-gray-400">{log.date}</p>
-                      {log.completion_pct !== null && (
-                        <span className="text-xs text-gray-500">{log.completion_pct}%</span>
-                      )}
+                      {log.completion_pct !== null && <span className="text-xs text-gray-500">{log.completion_pct}%</span>}
                     </div>
                     <p className="text-sm text-gray-700 mt-0.5 line-clamp-2">{log.description}</p>
                   </div>
