@@ -22,17 +22,6 @@ export interface Shareholder {
   notes: string | null
 }
 
-export interface ConstructionProgress {
-  id: string
-  store_id: string
-  team: string
-  task: string | null
-  status: '待進場' | '進行中' | '完成' | '延誤'
-  start_date: string | null
-  end_date: string | null
-  notes: string | null
-}
-
 export interface Expense {
   id: string
   store_id: string
@@ -47,6 +36,8 @@ export interface Expense {
   payment_status: '未結清' | '已結清'
   reimbursed: boolean
   invoice_type: '估價單' | '收據' | '發票' | '其他' | null
+  receipt_path: string | null
+  receipt_name: string | null
   notes: string | null
 }
 
@@ -78,17 +69,6 @@ export interface Todo {
   category: '工程' | '行政' | '設備' | '其他'
 }
 
-export interface Contract {
-  id: string
-  store_id: string
-  type: '租約' | '廠商合約' | '保險' | '其他'
-  name: string
-  start_date: string | null
-  end_date: string | null
-  amount: number | null
-  notes: string | null
-}
-
 export interface SOPDocument {
   id: string
   title: string
@@ -107,4 +87,94 @@ export interface SOPStep {
   estimated_days: number | null
   responsible: string | null
   notes: string | null
+}
+
+export interface Vendor {
+  id: string
+  store_id: string
+  name: string
+  category: string | null
+  contact_name: string | null
+  phone: string | null
+  payment_method: string | null
+  notes: string | null
+  created_at: string
+}
+
+export interface BudgetItem {
+  id: string
+  store_id: string
+  category: string
+  name: string
+  estimated_amount: number
+  notes: string | null
+  order_index: number
+}
+
+export interface ConstructionLog {
+  id: string
+  store_id: string
+  date: string
+  team: string | null
+  description: string
+  status: string | null
+  completion_pct: number | null
+  notes: string | null
+  created_at: string
+}
+
+export interface DesignFile {
+  id: string
+  store_id: string
+  category: string
+  name: string
+  file_path: string | null
+  file_name: string | null
+  notes: string | null
+  created_at: string
+}
+
+export interface Permit {
+  id: string
+  store_id: string
+  name: string
+  status: '未申請' | '申請中' | '已取得' | '不需要'
+  applied_date: string | null
+  expected_date: string | null
+  completed_date: string | null
+  notes: string | null
+  order_index: number
+}
+
+export interface ProfitEstimate {
+  id: string
+  store_id: string
+  monthly_revenue: number | null
+  monthly_food_cost: number | null
+  monthly_rent: number | null
+  monthly_salary: number | null
+  monthly_utilities: number | null
+  monthly_other: number | null
+}
+
+export interface OpeningChecklistItem {
+  id: string
+  store_id: string
+  category: string
+  item: string
+  completed: boolean
+  notes: string | null
+  order_index: number
+}
+
+export interface ScheduleItem {
+  id: string
+  store_id: string
+  team: string
+  task: string
+  start_date: string | null
+  end_date: string | null
+  status: '待開始' | '進行中' | '完成' | '延誤'
+  notes: string | null
+  order_index: number
 }
