@@ -59,10 +59,15 @@ export default function Home() {
             <h1 className="text-xl font-bold text-gray-900">店面建置管理系統</h1>
             <p className="text-sm text-gray-500 mt-0.5">管理所有店面的建置進度</p>
           </div>
-          <button onClick={() => setShowAdd(true)}
+          <div className="flex items-center gap-3">
+            <Link href="/sop" className="text-sm text-gray-600 hover:text-blue-600 font-medium px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors">
+              📋 SOP 知識庫
+            </Link>
+            <button onClick={() => setShowAdd(true)}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
             + 新增店面
           </button>
+          </div>
         </div>
       </header>
 

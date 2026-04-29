@@ -88,3 +88,23 @@ export interface Contract {
   amount: number | null
   notes: string | null
 }
+
+export interface SOPDocument {
+  id: string
+  title: string
+  description: string | null
+  category: string | null
+  order_index: number
+  created_at: string
+}
+
+export interface SOPStep {
+  id: string
+  document_id: string
+  order_index: number
+  title: string
+  content: string | null
+  estimated_days: number | null
+  responsible: string | null
+  notes: string | null
+}
