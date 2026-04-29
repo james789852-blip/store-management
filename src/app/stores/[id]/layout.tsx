@@ -1,15 +1,17 @@
 import { StoreSidebar } from '@/components/StoreSidebar'
 
-export default function StoreLayout({
+export default async function StoreLayout({
   children,
   params,
 }: {
   children: React.ReactNode
-  params: { id: string }
+  params: Promise<{ id: string }>
 }) {
+  const { id } = await params
+
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50">
-      <StoreSidebar storeId={params.id} />
+      <StoreSidebar storeId={id} />
       <div className="flex-1 overflow-y-auto">
         {children}
       </div>

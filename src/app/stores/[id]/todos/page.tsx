@@ -21,8 +21,15 @@ const STATUS_COLOR: Record<string, string> = {
   '完成': 'bg-green-100 text-green-700',
 }
 
-function emptyForm() {
-  return { title: '', description: '', due_date: '', priority: '中' as const, status: '待辦' as const, category: '工程' as const }
+type TodoForm = {
+  title: string; description: string; due_date: string
+  priority: '高' | '中' | '低'
+  status: '待辦' | '進行中' | '完成'
+  category: '工程' | '行政' | '設備' | '其他'
+}
+
+function emptyForm(): TodoForm {
+  return { title: '', description: '', due_date: '', priority: '中', status: '待辦', category: '工程' }
 }
 
 export default function TodosPage() {
@@ -31,7 +38,7 @@ export default function TodosPage() {
   const [loading, setLoading] = useState(true)
   const [showAdd, setShowAdd] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
-  const [form, setForm] = useState(emptyForm())
+  const [form, setForm] = useState<TodoForm>(emptyForm())
   const [saving, setSaving] = useState(false)
   const [filter, setFilter] = useState('全部')
 

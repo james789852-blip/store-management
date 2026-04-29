@@ -7,10 +7,15 @@ import type { Equipment } from '@/types'
 
 const CATEGORIES = ['廚房設備', '冷藏冷凍', '外場設備', '收銀設備', '辦公設備', '其他']
 
-function emptyForm() {
+type EquipmentForm = {
+  category: string; name: string; brand: string; model: string; size: string; power: string
+  condition: '全新' | '二手'; quantity: string; price: string; warranty_expire: string; arrival_date: string; notes: string
+}
+
+function emptyForm(): EquipmentForm {
   return {
     category: CATEGORIES[0], name: '', brand: '', model: '', size: '', power: '',
-    condition: '全新' as const, quantity: '1', price: '', warranty_expire: '', arrival_date: '', notes: ''
+    condition: '全新', quantity: '1', price: '', warranty_expire: '', arrival_date: '', notes: ''
   }
 }
 
@@ -20,7 +25,7 @@ export default function EquipmentPage() {
   const [loading, setLoading] = useState(true)
   const [showAdd, setShowAdd] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
-  const [form, setForm] = useState(emptyForm())
+  const [form, setForm] = useState<EquipmentForm>(emptyForm())
   const [saving, setSaving] = useState(false)
 
   useEffect(() => { load() }, [id])

@@ -14,8 +14,13 @@ const STATUS_COLOR: Record<string, string> = {
   '延誤': 'bg-red-100 text-red-600',
 }
 
-function emptyForm() {
-  return { team: '', task: '', start_date: '', end_date: '', status: '待開始' as const, notes: '' }
+type ScheduleForm = {
+  team: string; task: string; start_date: string; end_date: string
+  status: '待開始' | '進行中' | '完成' | '延誤'; notes: string
+}
+
+function emptyForm(): ScheduleForm {
+  return { team: '', task: '', start_date: '', end_date: '', status: '待開始', notes: '' }
 }
 
 export default function SchedulePage() {
@@ -24,7 +29,7 @@ export default function SchedulePage() {
   const [loading, setLoading] = useState(true)
   const [showAdd, setShowAdd] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
-  const [form, setForm] = useState(emptyForm())
+  const [form, setForm] = useState<ScheduleForm>(emptyForm())
   const [saving, setSaving] = useState(false)
 
   useEffect(() => { load() }, [id])

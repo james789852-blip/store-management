@@ -9,19 +9,20 @@ const PAYMENT_METHODS = ['現金', '轉帳', '信用卡', '匯款']
 const INVOICE_TYPES = ['估價單', '收據', '發票', '其他']
 const PAYMENT_STAGES = ['訂金', '工程款', '尾款', '全額']
 
-function emptyForm() {
+type ExpenseForm = {
+  date: string; item: string; vendor: string; buyer: string; quantity: string; amount: string
+  payment_stage: string; payment_method: string
+  payment_status: '未結清' | '已結清'
+  invoice_type: '估價單' | '收據' | '發票' | '其他'
+  notes: string
+}
+
+function emptyForm(): ExpenseForm {
   return {
     date: new Date().toISOString().slice(0, 10),
-    item: '',
-    vendor: '',
-    buyer: '',
-    quantity: '1',
-    amount: '',
-    payment_stage: '',
-    payment_method: '現金',
-    payment_status: '未結清' as const,
-    invoice_type: '收據' as const,
-    notes: '',
+    item: '', vendor: '', buyer: '', quantity: '1', amount: '',
+    payment_stage: '', payment_method: '現金',
+    payment_status: '未結清', invoice_type: '收據', notes: '',
   }
 }
 
@@ -31,7 +32,7 @@ export default function ExpensesPage() {
   const [loading, setLoading] = useState(true)
   const [showAdd, setShowAdd] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
-  const [form, setForm] = useState(emptyForm())
+  const [form, setForm] = useState<ExpenseForm>(emptyForm())
   const [saving, setSaving] = useState(false)
   const [receiptFile, setReceiptFile] = useState<File | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)

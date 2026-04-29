@@ -19,8 +19,13 @@ const DEFAULT_PERMITS = [
   '菸酒販售許可（如需要）', '音樂著作授權（如需要）', '廢棄物清理許可'
 ]
 
-function emptyForm() {
-  return { name: '', status: '未申請' as const, applied_date: '', expected_date: '', completed_date: '', notes: '' }
+type PermitForm = {
+  name: string; status: '未申請' | '申請中' | '已取得' | '不需要'
+  applied_date: string; expected_date: string; completed_date: string; notes: string
+}
+
+function emptyForm(): PermitForm {
+  return { name: '', status: '未申請', applied_date: '', expected_date: '', completed_date: '', notes: '' }
 }
 
 export default function PermitsPage() {
@@ -29,7 +34,7 @@ export default function PermitsPage() {
   const [loading, setLoading] = useState(true)
   const [showAdd, setShowAdd] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
-  const [form, setForm] = useState(emptyForm())
+  const [form, setForm] = useState<PermitForm>(emptyForm())
   const [saving, setSaving] = useState(false)
 
   useEffect(() => { load() }, [id])
