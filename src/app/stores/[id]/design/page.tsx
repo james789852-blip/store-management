@@ -51,8 +51,8 @@ export default function DesignPage() {
 
   async function openFile(f: DesignFile) {
     if (!f.file_path) return
-    const { data } = await supabase.storage.from('design-files').createSignedUrl(f.file_path, 120)
-    if (data) window.open(data.signedUrl, '_blank')
+    const { data } = supabase.storage.from('design-files').getPublicUrl(f.file_path)
+    if (data) window.open(data.publicUrl, '_blank')
   }
 
   const grouped = CATEGORIES.reduce((acc, cat) => {

@@ -197,8 +197,8 @@ export default function ExpensesPage() {
                       {exp.receipt_path ? (
                         <a href="#" onClick={async (e) => {
                           e.preventDefault()
-                          const { data } = await supabase.storage.from('receipts').createSignedUrl(exp.receipt_path!, 60)
-                          if (data) window.open(data.signedUrl, '_blank')
+                          const { data } = supabase.storage.from('receipts').getPublicUrl(exp.receipt_path!)
+                          if (data) window.open(data.publicUrl, '_blank')
                         }} className="text-xs text-blue-500 hover:underline">{exp.receipt_name || '附件'}</a>
                       ) : (
                         <span className="text-gray-300 text-xs">-</span>
