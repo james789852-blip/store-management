@@ -1,28 +1,55 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import type { Expense } from '@/types'
+import type { Expense, PayStatus } from '@/types'
+import { PAY_STATUS_LABEL } from '@/types'
+import { PAY_BADGE } from '@/lib/colors'
+import FileUploader from '@/components/FileUploader'
 
-const PAYMENT_METHODS = ['現金', '轉帳', '信用卡', '匯款']
-const INVOICE_TYPES = ['估價單', '收據', '發票', '其他']
-const PAYMENT_STAGES = ['訂金', '工程款', '尾款', '全額']
+const CATEGORY_SUGGESTIONS = ['裝潢工程', '水電', '設備', '設計', '招牌', '租金', '押金', '雜費']
+const PAY_METHOD_SUGGESTIONS = ['現金', '轉帳', '支票']
+
+type PayStatusFilter = 'all' | PayStatus
 
 type ExpenseForm = {
-  date: string; item: string; vendor: string; buyer: string; quantity: string; amount: string
-  payment_stage: string; payment_method: string
-  payment_status: '未結清' | '已結清'
-  invoice_type: '估價單' | '收據' | '發票' | '其他'
-  notes: string
+  date: string
+  category: string
+  name: string
+  vendor: string
+  total: string
+  pay_method: string
+  pay_status: PayStatus
+  pay_date: string
+  deposit_amount: string
+  deposit_date: string
+  balance_amount: string
+  balance_date: string
+  invoice_no: string
+  invoice_amount: string
+  note: string
+  photos: string[]
 }
 
 function emptyForm(): ExpenseForm {
   return {
     date: new Date().toISOString().slice(0, 10),
-    item: '', vendor: '', buyer: '', quantity: '1', amount: '',
-    payment_stage: '', payment_method: '現金',
-    payment_status: '未結清', invoice_type: '收據', notes: '',
+    category: '',
+    name: '',
+    vendor: '',
+    total: '',
+    pay_method: '',
+    pay_status: 'pending',
+    pay_date: '',
+    deposit_amount: '',
+    deposit_date: '',
+    balance_amount: '',
+    balance_date: '',
+    invoice_no: '',
+    invoice_amount: '',
+    note: '',
+    photos: [],
   }
 }
 
@@ -30,302 +57,501 @@ export default function ExpensesPage() {
   const { id } = useParams<{ id: string }>()
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
-  const [showAdd, setShowAdd] = useState(false)
+  const [showModal, setShowModal] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
   const [form, setForm] = useState<ExpenseForm>(emptyForm())
   const [saving, setSaving] = useState(false)
-  const [receiptFile, setReceiptFile] = useState<File | null>(null)
-  const fileRef = useRef<HTMLInputElement>(null)
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
+  const [categoryFilter, setCategoryFilter] = useState<string>('all')
+  const [statusFilter, setStatusFilter] = useState<PayStatusFilter>('all')
+  const [lightbox, setLightbox] = useState<string | null>(null)
+  const [expandedId, setExpandedId] = useState<string | null>(null)
 
   useEffect(() => { load() }, [id])
 
   async function load() {
-    const { data } = await supabase.from('expenses').select('*').eq('store_id', id).order('date', { ascending: false })
+    setLoading(true)
+    const { data } = await supabase
+      .from('expenses')
+      .select('*')
+      .eq('store_id', id)
+      .order('date', { ascending: false })
     setExpenses(data || [])
     setLoading(false)
   }
 
   async function save() {
-    if (!form.item || !form.amount) return
+    if (!form.name || !form.total) return
     setSaving(true)
-
-    let receipt_path = null
-    let receipt_name = null
-
-    if (receiptFile) {
-      const ext = receiptFile.name.split('.').pop()
-      const path = `${id}/expenses/${Date.now()}.${ext}`
-      await supabase.storage.from('receipts').upload(path, receiptFile)
-      receipt_path = path
-      receipt_name = receiptFile.name
-    }
-
     const payload = {
       store_id: id,
       date: form.date,
-      item: form.item,
+      category: form.category || null,
+      name: form.name,
       vendor: form.vendor || null,
-      buyer: form.buyer || null,
-      quantity: Number(form.quantity) || 1,
-      amount: Number(form.amount),
-      payment_stage: form.payment_stage || null,
-      payment_method: form.payment_method || null,
-      payment_status: form.payment_status,
-      invoice_type: form.invoice_type || null,
-      notes: form.notes || null,
-      ...(receiptFile ? { receipt_path, receipt_name } : {}),
+      total: Number(form.total),
+      pay_method: form.pay_method || null,
+      pay_status: form.pay_status,
+      pay_date: form.pay_date || null,
+      deposit_amount: form.deposit_amount ? Number(form.deposit_amount) : null,
+      deposit_date: form.deposit_date || null,
+      balance_amount: form.balance_amount ? Number(form.balance_amount) : null,
+      balance_date: form.balance_date || null,
+      invoice_no: form.invoice_no || null,
+      invoice_amount: form.invoice_amount ? Number(form.invoice_amount) : null,
+      photos: form.photos,
+      note: form.note || null,
     }
-
     if (editId) {
       await supabase.from('expenses').update(payload).eq('id', editId)
     } else {
       await supabase.from('expenses').insert(payload)
     }
-
     setSaving(false)
-    setShowAdd(false)
-    setEditId(null)
-    setForm(emptyForm())
-    setReceiptFile(null)
+    closeModal()
     load()
   }
 
-  async function deleteExpense(expId: string) {
+  async function confirmDelete(expId: string) {
     await supabase.from('expenses').delete().eq('id', expId)
+    setDeleteConfirm(null)
     load()
   }
 
-  async function exportExcel() {
-    const { utils, writeFile } = await import('xlsx')
-    const rows = expenses.map(e => ({
-      日期: e.date,
-      品項: e.item,
-      廠商: e.vendor || '',
-      購買人: e.buyer || '',
-      數量: e.quantity,
-      金額: e.amount,
-      付款階段: e.payment_stage || '',
-      付款方式: e.payment_method || '',
-      結清狀態: e.payment_status,
-      單據類型: e.invoice_type || '',
-      備註: e.notes || '',
-    }))
-    const ws = utils.json_to_sheet(rows)
-    const wb = utils.book_new()
-    utils.book_append_sheet(wb, ws, '費用記錄')
-    writeFile(wb, `費用記錄_${new Date().toISOString().slice(0, 10)}.xlsx`)
+  function openAdd() {
+    setForm(emptyForm())
+    setEditId(null)
+    setShowModal(true)
   }
 
   function startEdit(e: Expense) {
     setForm({
       date: e.date,
-      item: e.item,
+      category: e.category || '',
+      name: e.name,
       vendor: e.vendor || '',
-      buyer: e.buyer || '',
-      quantity: String(e.quantity),
-      amount: String(e.amount),
-      payment_stage: e.payment_stage || '',
-      payment_method: e.payment_method || '現金',
-      payment_status: e.payment_status,
-      invoice_type: (e.invoice_type as typeof form.invoice_type) || '收據',
-      notes: e.notes || '',
+      total: String(e.total),
+      pay_method: e.pay_method || '',
+      pay_status: e.pay_status,
+      pay_date: e.pay_date || '',
+      deposit_amount: e.deposit_amount != null ? String(e.deposit_amount) : '',
+      deposit_date: e.deposit_date || '',
+      balance_amount: e.balance_amount != null ? String(e.balance_amount) : '',
+      balance_date: e.balance_date || '',
+      invoice_no: e.invoice_no || '',
+      invoice_amount: e.invoice_amount != null ? String(e.invoice_amount) : '',
+      note: e.note || '',
+      photos: e.photos || [],
     })
     setEditId(e.id)
-    setShowAdd(true)
+    setShowModal(true)
   }
 
-  const total = expenses.reduce((s, e) => s + e.amount, 0)
-  const unpaid = expenses.filter(e => e.payment_status === '未結清').reduce((s, e) => s + e.amount, 0)
+  function closeModal() {
+    setShowModal(false)
+    setEditId(null)
+    setForm(emptyForm())
+  }
+
+  function f(val: string, setter: (v: string) => void) {
+    return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
+      setter(e.target.value)
+  }
+
+  async function exportExcel() {
+    const XLSX = await import('xlsx')
+    const rows = filtered.map(e => ({
+      日期: e.date,
+      類別: e.category || '',
+      品項: e.name,
+      廠商: e.vendor || '',
+      金額: e.total,
+      付款方式: e.pay_method || '',
+      付款狀態: PAY_STATUS_LABEL[e.pay_status],
+      付款日期: e.pay_date || '',
+      訂金: e.deposit_amount ?? '',
+      訂金日期: e.deposit_date || '',
+      尾款: e.balance_amount ?? '',
+      尾款日期: e.balance_date || '',
+      發票號碼: e.invoice_no || '',
+      發票金額: e.invoice_amount ?? '',
+      備註: e.note || '',
+    }))
+    const ws = XLSX.utils.json_to_sheet(rows)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, '費用記錄')
+    XLSX.writeFile(wb, `費用記錄_${new Date().toISOString().slice(0, 10)}.xlsx`)
+  }
+
+  // Derived data
+  const allCategories = Array.from(new Set(expenses.map(e => e.category).filter(Boolean))) as string[]
+
+  const filtered = expenses.filter(e => {
+    const catOk = categoryFilter === 'all' || e.category === categoryFilter
+    const statOk = statusFilter === 'all' || e.pay_status === statusFilter
+    return catOk && statOk
+  })
+
+  const totalAll = expenses.reduce((s, e) => s + e.total, 0)
+  const totalPaid = expenses.filter(e => e.pay_status === 'paid').reduce((s, e) => s + e.total, 0)
+  const totalPending = expenses.filter(e => e.pay_status === 'pending').reduce((s, e) => s + e.total, 0)
+  const filteredTotal = filtered.reduce((s, e) => s + e.total, 0)
+
+  const inputCls = 'mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
+  const labelCls = 'text-xs font-medium text-gray-600'
 
   if (loading) return <div className="flex items-center justify-center py-32 text-gray-400">載入中...</div>
 
   return (
-    <div className="p-8 max-w-5xl">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">費用記錄</h1>
-          <p className="text-sm text-gray-400 mt-0.5">
-            累計 NT$ {total.toLocaleString()}｜未結清 NT$ {unpaid.toLocaleString()}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          {expenses.length > 0 && (
-            <button onClick={exportExcel}
-              className="px-4 py-2 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition-colors">
-              匯出 Excel
+    <div className="bg-gray-50 min-h-screen">
+      <div className="max-w-5xl mx-auto p-8">
+        {/* Header */}
+        <div className="flex items-start justify-between mb-8">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">費用記錄</h1>
+            <div className="flex flex-wrap gap-4 mt-3">
+              <div className="bg-white rounded-xl border border-gray-200 px-4 py-2.5">
+                <p className="text-xs text-gray-400">總金額</p>
+                <p className="text-lg font-bold text-gray-900">NT$ {totalAll.toLocaleString()}</p>
+              </div>
+              <div className="bg-white rounded-xl border border-gray-200 px-4 py-2.5">
+                <p className="text-xs text-gray-400">已付清</p>
+                <p className="text-lg font-bold text-green-600">NT$ {totalPaid.toLocaleString()}</p>
+              </div>
+              <div className="bg-white rounded-xl border border-gray-200 px-4 py-2.5">
+                <p className="text-xs text-gray-400">未付款</p>
+                <p className="text-lg font-bold text-gray-500">NT$ {totalPending.toLocaleString()}</p>
+              </div>
+            </div>
+          </div>
+          <div className="flex gap-2 pt-1">
+            {expenses.length > 0 && (
+              <button onClick={exportExcel}
+                className="px-4 py-2 border border-gray-200 bg-white rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition-colors">
+                匯出 Excel
+              </button>
+            )}
+            <button onClick={openAdd}
+              className="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors">
+              + 新增費用
             </button>
-          )}
-          <button onClick={() => { setShowAdd(true); setEditId(null); setForm(emptyForm()); setReceiptFile(null) }}
-            className="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors">
-            + 新增費用
-          </button>
-        </div>
-      </div>
-
-      {expenses.length === 0 ? (
-        <div className="text-center py-20 text-gray-400">
-          <p className="text-lg font-medium text-gray-600 mb-1">尚無費用記錄</p>
-          <p className="text-sm">記錄每一筆建置費用，並可附上單據</p>
-        </div>
-      ) : (
-        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b border-gray-100">
-                <tr>
-                  {['日期', '品項', '廠商', '購買人', '金額', '付款階段', '方式', '結清', '單據', ''].map(h => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {expenses.map(exp => (
-                  <tr key={exp.id} className="group hover:bg-gray-50">
-                    <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{exp.date}</td>
-                    <td className="px-4 py-3 font-medium text-gray-800">{exp.item}</td>
-                    <td className="px-4 py-3 text-gray-500">{exp.vendor || '-'}</td>
-                    <td className="px-4 py-3 text-gray-500">{exp.buyer || '-'}</td>
-                    <td className="px-4 py-3 font-semibold text-gray-800 whitespace-nowrap">NT$ {exp.amount.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-gray-500">{exp.payment_stage || '-'}</td>
-                    <td className="px-4 py-3 text-gray-500">{exp.payment_method || '-'}</td>
-                    <td className="px-4 py-3">
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${exp.payment_status === '已結清' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-                        {exp.payment_status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      {exp.receipt_path ? (
-                        <a href="#" onClick={async (e) => {
-                          e.preventDefault()
-                          const { data } = supabase.storage.from('receipts').getPublicUrl(exp.receipt_path!)
-                          if (data) window.open(data.publicUrl, '_blank')
-                        }} className="text-xs text-blue-500 hover:underline">{exp.receipt_name || '附件'}</a>
-                      ) : (
-                        <span className="text-gray-300 text-xs">-</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="opacity-0 group-hover:opacity-100 flex gap-1 transition-opacity">
-                        <button onClick={() => startEdit(exp)} className="text-xs text-blue-500 hover:text-blue-700 px-2 py-1">編輯</button>
-                        <button onClick={() => deleteExpense(exp.id)} className="text-xs text-red-400 hover:text-red-600 px-2 py-1">刪除</button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot className="bg-gray-50 border-t border-gray-200">
-                <tr>
-                  <td colSpan={4} className="px-4 py-3 font-semibold text-gray-700">合計</td>
-                  <td className="px-4 py-3 font-bold text-gray-900">NT$ {total.toLocaleString()}</td>
-                  <td colSpan={5} />
-                </tr>
-              </tfoot>
-            </table>
           </div>
         </div>
-      )}
 
-      {showAdd && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-lg p-6 shadow-xl max-h-[90vh] overflow-y-auto">
-            <h2 className="font-bold text-gray-900 text-lg mb-5">{editId ? '編輯費用' : '新增費用'}</h2>
-            <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
+        {/* Filter bar */}
+        {expenses.length > 0 && (
+          <div className="flex flex-wrap items-center gap-3 mb-5">
+            {/* Category dropdown */}
+            <select
+              value={categoryFilter}
+              onChange={e => setCategoryFilter(e.target.value)}
+              className="border border-gray-200 bg-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="all">所有類別</option>
+              {allCategories.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+
+            {/* Status tabs */}
+            <div className="flex bg-white border border-gray-200 rounded-xl overflow-hidden">
+              {([['all', '全部'], ['paid', '已付清'], ['partial', '部分付款'], ['pending', '未付款']] as const).map(([val, label]) => (
+                <button
+                  key={val}
+                  onClick={() => setStatusFilter(val as PayStatusFilter)}
+                  className={`px-3 py-2 text-sm transition-colors ${statusFilter === val ? 'bg-blue-600 text-white' : 'text-gray-500 hover:bg-gray-50'}`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Table */}
+        {expenses.length === 0 ? (
+          <div className="text-center py-24 text-gray-400">
+            <p className="text-lg font-medium text-gray-600 mb-1">尚無費用記錄</p>
+            <p className="text-sm">點擊「新增費用」開始記錄每一筆建置費用</p>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-20 text-gray-400">
+            <p className="text-base font-medium text-gray-500">沒有符合篩選條件的記錄</p>
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 border-b border-gray-100">
+                  <tr>
+                    {['日期', '類別', '品項', '廠商', '金額', '付款方式', '狀態', '照片', '操作'].map(h => (
+                      <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map(exp => {
+                    const isExpanded = expandedId === exp.id
+                    return (
+                      <>
+                        <tr key={exp.id}
+                          onClick={() => setExpandedId(isExpanded ? null : exp.id)}
+                          className={`group border-t border-gray-50 cursor-pointer transition-colors ${isExpanded ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
+                          <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{exp.date}</td>
+                          <td className="px-4 py-3">
+                            {exp.category
+                              ? <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{exp.category}</span>
+                              : <span className="text-gray-300">-</span>}
+                          </td>
+                          <td className="px-4 py-3 font-medium text-gray-800">{exp.name}</td>
+                          <td className="px-4 py-3 text-gray-500">{exp.vendor || '-'}</td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <span className="font-semibold text-gray-800">NT$ {exp.total.toLocaleString()}</span>
+                          </td>
+                          <td className="px-4 py-3 text-gray-500">{exp.pay_method || '-'}</td>
+                          <td className="px-4 py-3">
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${PAY_BADGE[exp.pay_status]}`}>
+                              {PAY_STATUS_LABEL[exp.pay_status]}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                            {exp.photos?.length > 0 && (
+                              <div className="flex gap-1">
+                                {exp.photos.slice(0, 3).map(url => (
+                                  <img key={url} src={url} alt="" onClick={() => setLightbox(url)}
+                                    className="w-8 h-8 rounded-lg object-cover border border-gray-200 cursor-zoom-in hover:opacity-80 transition-opacity" />
+                                ))}
+                                {exp.photos.length > 3 && (
+                                  <button onClick={() => setLightbox(exp.photos[3])}
+                                    className="text-xs text-gray-400 self-center hover:text-blue-500">
+                                    +{exp.photos.length - 3}
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                            <div className="opacity-0 group-hover:opacity-100 flex gap-1 transition-opacity">
+                              <button onClick={() => startEdit(exp)}
+                                className="text-xs text-blue-500 hover:text-blue-700 px-2 py-1">編輯</button>
+                              <button onClick={() => setDeleteConfirm(exp.id)}
+                                className="text-xs text-red-400 hover:text-red-600 px-2 py-1">刪除</button>
+                            </div>
+                          </td>
+                        </tr>
+                        {isExpanded && (
+                          <tr key={`${exp.id}-detail`} className="bg-blue-50 border-t border-blue-100">
+                            <td colSpan={9} className="px-6 py-4">
+                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+                                {exp.deposit_amount != null && (
+                                  <>
+                                    <div><p className="text-xs text-gray-400 mb-0.5">訂金</p><p className="font-medium">NT$ {exp.deposit_amount.toLocaleString()}{exp.deposit_date ? ` · ${exp.deposit_date}` : ''}</p></div>
+                                    <div><p className="text-xs text-gray-400 mb-0.5">尾款</p><p className="font-medium">NT$ {(exp.balance_amount ?? 0).toLocaleString()}{exp.balance_date ? ` · ${exp.balance_date}` : ''}</p></div>
+                                  </>
+                                )}
+                                {exp.pay_date && <div><p className="text-xs text-gray-400 mb-0.5">付款日期</p><p className="font-medium">{exp.pay_date}</p></div>}
+                                {exp.invoice_no && <div><p className="text-xs text-gray-400 mb-0.5">發票號碼</p><p className="font-medium">{exp.invoice_no}{exp.invoice_amount ? ` · NT$ ${exp.invoice_amount.toLocaleString()}` : ''}</p></div>}
+                                {exp.note && <div className="col-span-2 sm:col-span-4"><p className="text-xs text-gray-400 mb-0.5">備註</p><p className="text-gray-700 whitespace-pre-wrap">{exp.note}</p></div>}
+                                {exp.photos?.length > 0 && (
+                                  <div className="col-span-2 sm:col-span-4">
+                                    <p className="text-xs text-gray-400 mb-1.5">收據 / 照片</p>
+                                    <div className="flex flex-wrap gap-2">
+                                      {exp.photos.map(url => (
+                                        <img key={url} src={url} alt="" onClick={() => setLightbox(url)}
+                                          className="w-16 h-16 rounded-xl object-cover border border-blue-200 cursor-zoom-in hover:opacity-80 transition-opacity" />
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </>
+                    )
+                  })}
+                </tbody>
+                <tfoot className="bg-gray-50 border-t border-gray-200">
+                  <tr>
+                    <td colSpan={4} className="px-4 py-3 text-sm font-semibold text-gray-700">
+                      合計 {filtered.length} 筆
+                    </td>
+                    <td className="px-4 py-3 font-bold text-gray-900 whitespace-nowrap">
+                      NT$ {filteredTotal.toLocaleString()}
+                    </td>
+                    <td colSpan={4} />
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Add / Edit Modal */}
+        {showModal && (
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl w-full max-w-2xl shadow-xl max-h-[92vh] flex flex-col">
+              <div className="px-6 pt-6 pb-4 border-b border-gray-100">
+                <h2 className="font-bold text-gray-900 text-lg">{editId ? '編輯費用' : '新增費用'}</h2>
+              </div>
+
+              <div className="overflow-y-auto flex-1 px-6 py-5 space-y-6">
+                {/* Section 1: 基本資訊 */}
                 <div>
-                  <label className="text-sm font-medium text-gray-700">日期</label>
-                  <input type="date" className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} />
+                  <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">基本資訊</h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className={labelCls}>日期</label>
+                      <input type="date" className={inputCls}
+                        value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label className={labelCls}>類別</label>
+                      <input className={inputCls} list="category-list" placeholder="例：裝潢工程"
+                        value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} />
+                      <datalist id="category-list">
+                        {CATEGORY_SUGGESTIONS.map(c => <option key={c} value={c} />)}
+                      </datalist>
+                    </div>
+                    <div className="col-span-2">
+                      <label className={labelCls}>品項名稱 *</label>
+                      <input autoFocus className={inputCls} placeholder="例：廚房排煙設備安裝"
+                        value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label className={labelCls}>廠商</label>
+                      <input className={inputCls}
+                        value={form.vendor} onChange={e => setForm(f => ({ ...f, vendor: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label className={labelCls}>總金額 *</label>
+                      <input type="number" className={inputCls} placeholder="0"
+                        value={form.total} onChange={e => setForm(f => ({ ...f, total: e.target.value }))} />
+                    </div>
+                  </div>
                 </div>
+
+                {/* Section 2: 付款資訊 */}
                 <div>
-                  <label className="text-sm font-medium text-gray-700">品項 *</label>
-                  <input autoFocus className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={form.item} onChange={e => setForm(f => ({ ...f, item: e.target.value }))} placeholder="例：廚房排煙設備" />
+                  <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">付款資訊</h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className={labelCls}>付款方式</label>
+                      <input className={inputCls} list="pay-method-list" placeholder="例：轉帳"
+                        value={form.pay_method} onChange={e => setForm(f => ({ ...f, pay_method: e.target.value }))} />
+                      <datalist id="pay-method-list">
+                        {PAY_METHOD_SUGGESTIONS.map(m => <option key={m} value={m} />)}
+                      </datalist>
+                    </div>
+                    <div>
+                      <label className={labelCls}>付款狀態</label>
+                      <select className={inputCls}
+                        value={form.pay_status} onChange={e => setForm(f => ({ ...f, pay_status: e.target.value as PayStatus }))}>
+                        <option value="pending">未付款</option>
+                        <option value="partial">部分付款</option>
+                        <option value="paid">已付清</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className={labelCls}>付款日期</label>
+                      <input type="date" className={inputCls}
+                        value={form.pay_date} onChange={e => setForm(f => ({ ...f, pay_date: e.target.value }))} />
+                    </div>
+                    <div />
+
+                    <div>
+                      <label className={labelCls}>訂金金額</label>
+                      <input type="number" className={inputCls} placeholder="0"
+                        value={form.deposit_amount} onChange={e => setForm(f => ({ ...f, deposit_amount: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label className={labelCls}>訂金日期</label>
+                      <input type="date" className={inputCls}
+                        value={form.deposit_date} onChange={e => setForm(f => ({ ...f, deposit_date: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label className={labelCls}>尾款金額</label>
+                      <input type="number" className={inputCls} placeholder="0"
+                        value={form.balance_amount} onChange={e => setForm(f => ({ ...f, balance_amount: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label className={labelCls}>尾款日期</label>
+                      <input type="date" className={inputCls}
+                        value={form.balance_date} onChange={e => setForm(f => ({ ...f, balance_date: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label className={labelCls}>發票號碼</label>
+                      <input className={inputCls}
+                        value={form.invoice_no} onChange={e => setForm(f => ({ ...f, invoice_no: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label className={labelCls}>發票金額</label>
+                      <input type="number" className={inputCls} placeholder="0"
+                        value={form.invoice_amount} onChange={e => setForm(f => ({ ...f, invoice_amount: e.target.value }))} />
+                    </div>
+                    <div className="col-span-2">
+                      <label className={labelCls}>備註</label>
+                      <textarea rows={2} className={`${inputCls} resize-none`}
+                        value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Section 3: 收據 / 照片 */}
+                <div>
+                  <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">收據 / 照片</h3>
+                  <FileUploader
+                    folderPath={`expenses/${id}`}
+                    value={form.photos}
+                    onChange={photos => setForm(f => ({ ...f, photos }))}
+                    multiple
+                    accept="image/*,.pdf"
+                  />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-sm font-medium text-gray-700">廠商</label>
-                  <input className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={form.vendor} onChange={e => setForm(f => ({ ...f, vendor: e.target.value }))} />
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-700">購買人</label>
-                  <input className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={form.buyer} onChange={e => setForm(f => ({ ...f, buyer: e.target.value }))} />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-sm font-medium text-gray-700">金額 *</label>
-                  <input type="number" className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} placeholder="0" />
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-700">數量</label>
-                  <input type="number" className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={form.quantity} onChange={e => setForm(f => ({ ...f, quantity: e.target.value }))} />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-sm font-medium text-gray-700">付款階段</label>
-                  <select className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={form.payment_stage} onChange={e => setForm(f => ({ ...f, payment_stage: e.target.value }))}>
-                    <option value="">請選擇</option>
-                    {PAYMENT_STAGES.map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-700">付款方式</label>
-                  <select className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={form.payment_method} onChange={e => setForm(f => ({ ...f, payment_method: e.target.value }))}>
-                    {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
-                  </select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-sm font-medium text-gray-700">結清狀態</label>
-                  <select className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={form.payment_status} onChange={e => setForm(f => ({ ...f, payment_status: e.target.value as typeof form.payment_status }))}>
-                    <option value="未結清">未結清</option>
-                    <option value="已結清">已結清</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-700">單據類型</label>
-                  <select className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={form.invoice_type} onChange={e => setForm(f => ({ ...f, invoice_type: e.target.value as typeof form.invoice_type }))}>
-                    {INVOICE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700">上傳收據 / 發票</label>
-                <input ref={fileRef} type="file" accept="image/*,.pdf" className="hidden"
-                  onChange={e => setReceiptFile(e.target.files?.[0] || null)} />
-                <button onClick={() => fileRef.current?.click()}
-                  className="mt-1 w-full border border-dashed border-gray-300 rounded-xl py-2.5 text-sm text-gray-500 hover:border-blue-400 hover:text-blue-500 transition-colors">
-                  {receiptFile ? receiptFile.name : '點擊上傳（圖片或 PDF）'}
+
+              <div className="px-6 pb-6 pt-4 border-t border-gray-100 flex gap-2">
+                <button onClick={closeModal}
+                  className="flex-1 border border-gray-200 text-gray-600 py-2.5 rounded-xl text-sm hover:bg-gray-50 transition-colors">
+                  取消
+                </button>
+                <button onClick={save} disabled={!form.name || !form.total || saving}
+                  className="flex-1 bg-blue-600 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                  {saving ? '儲存中...' : '儲存'}
                 </button>
               </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700">備註</label>
-                <input className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
-              </div>
-            </div>
-            <div className="flex gap-2 mt-6">
-              <button onClick={() => { setShowAdd(false); setEditId(null) }}
-                className="flex-1 border border-gray-200 text-gray-600 py-2.5 rounded-xl text-sm hover:bg-gray-50 transition-colors">取消</button>
-              <button onClick={save} disabled={!form.item || !form.amount || saving}
-                className="flex-1 bg-blue-600 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors">
-                {saving ? '儲存中...' : '儲存'}
-              </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
+
+        {/* Lightbox */}
+        {lightbox && (
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 cursor-zoom-out"
+            onClick={() => setLightbox(null)}>
+            <img src={lightbox} alt="" className="max-w-full max-h-full rounded-xl object-contain shadow-2xl" onClick={e => e.stopPropagation()} />
+            <button onClick={() => setLightbox(null)}
+              className="absolute top-4 right-4 text-white bg-black/40 hover:bg-black/60 rounded-full w-9 h-9 flex items-center justify-center text-lg transition-colors">
+              ✕
+            </button>
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {deleteConfirm && (
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl w-full max-w-sm p-6 shadow-xl">
+              <h2 className="font-bold text-gray-900 text-lg mb-2">確認刪除</h2>
+              <p className="text-sm text-gray-500 mb-6">此操作無法復原，確定要刪除這筆費用記錄嗎？</p>
+              <div className="flex gap-2">
+                <button onClick={() => setDeleteConfirm(null)}
+                  className="flex-1 border border-gray-200 text-gray-600 py-2.5 rounded-xl text-sm hover:bg-gray-50 transition-colors">
+                  取消
+                </button>
+                <button onClick={() => confirmDelete(deleteConfirm)}
+                  className="flex-1 bg-red-500 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-red-600 transition-colors">
+                  刪除
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

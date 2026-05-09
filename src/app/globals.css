@@ -1,26 +1,86 @@
 @import "tailwindcss";
 
+/* ── Brand Color Tokens ─────────────────────────────────────── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --blue:   #185FA5;
+  --teal:   #1D9E75;
+  --amber:  #EF9F27;
+  --red:    #D94F4F;
+  --purple: #534AB7;
+
+  --blue-tint:   #E8F2FC;
+  --teal-tint:   #E6F6F1;
+  --amber-tint:  #FDF3E3;
+  --red-tint:    #FAEAEA;
+  --purple-tint: #EDEEF8;
+  --muted-tint:  #F2F1ED;
+
+  --surface:      #FFFFFF;
+  --surface-soft: #F5F4F0;
+  --border:       #E0DFD8;
+
+  --ink:       #1A1916;
+  --ink-soft:  #636059;
+  --ink-faint: #888780;
 }
 
+/* ── Override Tailwind's gray scale with warm brand grays ────── */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-geist);
+
+  --color-gray-50:  #F5F4F0;
+  --color-gray-100: #EEEDE8;
+  --color-gray-200: #E0DFD8;
+  --color-gray-300: #C8C7BF;
+  --color-gray-400: #888780;
+  --color-gray-500: #636059;
+  --color-gray-600: #4A4840;
+  --color-gray-700: #36342E;
+  --color-gray-800: #252320;
+  --color-gray-900: #1A1916;
+
+  /* Brand colors */
+  --color-brand-blue:          #185FA5;
+  --color-brand-teal:          #1D9E75;
+  --color-brand-amber:         #EF9F27;
+  --color-brand-red:           #D94F4F;
+  --color-brand-purple:        #534AB7;
+
+  --color-brand-blue-tint:     #E8F2FC;
+  --color-brand-teal-tint:     #E6F6F1;
+  --color-brand-amber-tint:    #FDF3E3;
+  --color-brand-red-tint:      #FAEAEA;
+  --color-brand-purple-tint:   #EDEEF8;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+/* ── Base ────────────────────────────────────────────────────── */
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--surface-soft);
+  color: var(--ink);
+  font-family: var(--font-geist), system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Scrollbar styling ───────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #C8C7BF;
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #888780;
+}
+
+/* Dark sidebar scrollbar */
+aside ::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.12);
+}
+aside ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,0.2);
 }

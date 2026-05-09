@@ -1,308 +1,230 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
+import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
-import type { BudgetItem } from '@/types'
+import type { BudgetSettings, Expense } from '@/types'
 
-const CATEGORIES = ['裝潢工程', '設備採購', '家具軟裝', '招牌廣告', '行政費用', '備用金', '其他']
-
-type Settings = {
-  ping_count: string
-  price_per_ping: string
-  total_budget: string
-  released_pct: string
-}
-
-type ItemForm = {
-  category: string
-  name: string
-  estimated_amount: string
-  notes: string
-}
-
-function emptyItemForm(): ItemForm {
-  return { category: CATEGORIES[0], name: '', estimated_amount: '', notes: '' }
+const BUDGET_CATEGORIES = ['租約', '工程', '設備', '行政', '水電', '貨商', '文具雜支', '預備金'] as const
+const CAT_COLORS: Record<string, string> = {
+  '租約': 'bg-blue-100 text-blue-700',
+  '工程': 'bg-amber-100 text-amber-700',
+  '設備': 'bg-purple-100 text-purple-700',
+  '行政': 'bg-indigo-100 text-indigo-700',
+  '水電': 'bg-teal-100 text-teal-700',
+  '貨商': 'bg-orange-100 text-orange-700',
+  '文具雜支': 'bg-gray-100 text-gray-600',
+  '預備金': 'bg-green-100 text-green-700',
 }
 
 export default function BudgetPage() {
   const { id } = useParams<{ id: string }>()
-  const [items, setItems] = useState<BudgetItem[]>([])
-  const [loading, setLoading] = useState(true)
-  const [showAdd, setShowAdd] = useState(false)
-  const [editId, setEditId] = useState<string | null>(null)
-  const [form, setForm] = useState<ItemForm>(emptyItemForm())
+  const [tab, setTab] = useState<'overview' | 'investor'>('overview')
+  const [settings, setSettings] = useState<BudgetSettings | null>(null)
+  const [expenses, setExpenses] = useState<Pick<Expense, 'category' | 'total' | 'pay_status'>[]>([])
+  const [form, setForm] = useState({ sqft: '', price_per_sqft: '75000' })
   const [saving, setSaving] = useState(false)
-  const [settings, setSettings] = useState<Settings>({
-    ping_count: '', price_per_ping: '', total_budget: '', released_pct: '30'
-  })
-  const [savingSettings, setSavingSettings] = useState(false)
+  const [saved, setSaved] = useState(false)
 
-  const load = useCallback(async () => {
-    const [{ data: itemsData }, { data: settingsData }] = await Promise.all([
-      supabase.from('budget_items').select('*').eq('store_id', id).order('category').order('order_index'),
+  useEffect(() => { load() }, [id]) // eslint-disable-line
+
+  async function load() {
+    const [{ data: s }, { data: e }] = await Promise.all([
       supabase.from('budget_settings').select('*').eq('store_id', id).maybeSingle(),
+      supabase.from('expenses').select('category, total, pay_status').eq('store_id', id),
     ])
-    setItems(itemsData || [])
-    if (settingsData) {
-      setSettings({
-        ping_count: settingsData.ping_count != null ? String(settingsData.ping_count) : '',
-        price_per_ping: settingsData.price_per_ping != null ? String(settingsData.price_per_ping) : '',
-        total_budget: settingsData.total_budget != null ? String(settingsData.total_budget) : '',
-        released_pct: settingsData.released_pct != null ? String(Number(settingsData.released_pct) * 100) : '30',
+    if (s) {
+      setSettings(s)
+      // DB uses ping_count / price_per_ping / released_pct
+      const dbSqft = (s as Record<string, unknown>).ping_count ?? (s as Record<string, unknown>).sqft
+      const dbPrice = (s as Record<string, unknown>).price_per_ping ?? (s as Record<string, unknown>).price_per_sqft
+      setForm({
+        sqft: dbSqft?.toString() ?? '',
+        price_per_sqft: dbPrice?.toString() ?? '75000',
       })
     }
-    setLoading(false)
-  }, [id])
+    setExpenses(e || [])
+  }
 
-  useEffect(() => { load() }, [load])
-
-  const calculatedCost = settings.ping_count && settings.price_per_ping
-    ? Number(settings.ping_count) * Number(settings.price_per_ping)
-    : null
-
-  const totalBudget = settings.total_budget ? Number(settings.total_budget) : calculatedCost
-  const releasedPct = settings.released_pct ? Number(settings.released_pct) : 30
-  const valuePerPct = totalBudget && releasedPct ? Math.round(totalBudget / releasedPct) : null
+  const sqft = parseFloat(form.sqft) || 0
+  const pricePerSqft = parseFloat(form.price_per_sqft) || 75000
+  const investorPct = 30 // 固定 30%，依據計算規格
+  const totalBudget = sqft * pricePerSqft
+  const totalValuation = sqft > 0 ? totalBudget / 0.3 : 0  // 總估值 = 總預算 ÷ 30%
+  const totalActual = expenses.reduce((s, e) => s + (e.total || 0), 0)
+  const paid = expenses.filter(e => e.pay_status === 'paid').reduce((s, e) => s + (e.total || 0), 0)
+  const pending = totalActual - paid
+  const remaining = totalBudget - totalActual
+  const onePercent = totalValuation * 0.01
 
   async function saveSettings() {
-    setSavingSettings(true)
-    const payload = {
-      store_id: id,
-      ping_count: settings.ping_count ? Number(settings.ping_count) : null,
-      price_per_ping: settings.price_per_ping ? Number(settings.price_per_ping) : null,
-      total_budget: settings.total_budget ? Number(settings.total_budget) : (calculatedCost ?? null),
-      released_pct: releasedPct / 100,
-    }
-    await supabase.from('budget_settings').upsert(payload, { onConflict: 'store_id' })
-    setSavingSettings(false)
-    load()
-  }
-
-  async function save() {
-    if (!form.name || !form.estimated_amount) return
     setSaving(true)
-    const payload = {
+    // Save using actual DB column names
+    const dbPayload = {
       store_id: id,
-      category: form.category,
-      name: form.name,
-      estimated_amount: Number(form.estimated_amount),
-      notes: form.notes || null,
-      order_index: items.length,
+      ping_count: sqft || null,
+      price_per_ping: pricePerSqft,
+      total_budget: totalBudget || null,
+      released_pct: investorPct,
     }
-    if (editId) {
-      await supabase.from('budget_items').update(payload).eq('id', editId)
+    if (settings) {
+      await supabase.from('budget_settings').update(dbPayload).eq('id', settings.id)
     } else {
-      await supabase.from('budget_items').insert(payload)
+      await supabase.from('budget_settings').insert(dbPayload)
     }
-    setSaving(false)
-    setShowAdd(false)
-    setEditId(null)
-    setForm(emptyItemForm())
-    load()
+    // Also sync to stores table (uses correct column names)
+    await supabase.from('stores').update({
+      sqft: sqft || null,
+      total_budget: totalBudget || null,
+      price_per_sqft: pricePerSqft,
+      total_valuation: totalValuation || null,
+    }).eq('id', id)
+    setSaving(false); setSaved(true); setTimeout(() => setSaved(false), 2000); load()
   }
 
-  async function deleteItem(itemId: string) {
-    await supabase.from('budget_items').delete().eq('id', itemId)
-    load()
-  }
-
-  function startEdit(item: BudgetItem) {
-    setForm({ category: item.category, name: item.name, estimated_amount: String(item.estimated_amount), notes: item.notes || '' })
-    setEditId(item.id)
-    setShowAdd(true)
-  }
-
-  const grouped = CATEGORIES.reduce((acc, cat) => {
-    acc[cat] = items.filter(i => i.category === cat)
-    return acc
-  }, {} as Record<string, BudgetItem[]>)
-
-  const total = items.reduce((s, i) => s + i.estimated_amount, 0)
-
-  if (loading) return <div className="flex items-center justify-center py-32 text-gray-400">載入中...</div>
+  const byCategory = BUDGET_CATEGORIES.map(cat => {
+    const actual = expenses.filter(e => e.category === cat).reduce((s, e) => s + (e.total || 0), 0)
+    return { cat, actual }
+  })
 
   return (
-    <div className="p-8 max-w-3xl">
-      <div className="flex items-center justify-between mb-6">
-        <div>
+    <div className="bg-gray-50 min-h-full p-8">
+      <div className="max-w-4xl mx-auto">
+        <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold text-gray-900">預算規劃</h1>
-          <p className="text-sm text-gray-400 mt-0.5">明細合計：NT$ {total.toLocaleString()}</p>
-        </div>
-        <button onClick={() => { setShowAdd(true); setEditId(null); setForm(emptyItemForm()) }}
-          className="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors">
-          + 新增項目
-        </button>
-      </div>
-
-      {/* 費用試算設定 */}
-      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border border-blue-100 p-5 mb-6">
-        <h2 className="font-semibold text-blue-900 text-sm mb-4">建置費用試算 &amp; 募資設定</h2>
-        <div className="grid grid-cols-2 gap-3 mb-3">
-          <div>
-            <label className="text-xs font-medium text-blue-700">店面坪數</label>
-            <div className="flex mt-1">
-              <input type="number" min="0"
-                className="flex-1 border border-blue-200 bg-white rounded-l-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                value={settings.ping_count}
-                onChange={e => setSettings(s => ({ ...s, ping_count: e.target.value }))}
-                placeholder="32" />
-              <span className="border border-l-0 border-blue-200 rounded-r-xl px-3 py-2 text-sm text-blue-400 bg-white">坪</span>
-            </div>
-          </div>
-          <div>
-            <label className="text-xs font-medium text-blue-700">每坪單價</label>
-            <div className="flex mt-1">
-              <span className="border border-r-0 border-blue-200 rounded-l-xl px-3 py-2 text-sm text-blue-400 bg-white">NT$</span>
-              <input type="number" min="0"
-                className="flex-1 border border-blue-200 bg-white rounded-r-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                value={settings.price_per_ping}
-                onChange={e => setSettings(s => ({ ...s, price_per_ping: e.target.value }))}
-                placeholder="75,000" />
-            </div>
+          <div className="flex gap-1 bg-white rounded-xl border border-gray-200 p-1">
+            {(['overview', 'investor'] as const).map(t => (
+              <button key={t} onClick={() => setTab(t)}
+                className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${tab === t ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'}`}>
+                {t === 'overview' ? '預算總覽' : '股東連結'}
+              </button>
+            ))}
           </div>
         </div>
 
-        {calculatedCost !== null && (
-          <div className="bg-white rounded-xl px-4 py-3 mb-3 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium text-gray-700">建置總費用試算</p>
-              <p className="text-xs text-gray-400 mt-0.5">
-                {settings.ping_count} 坪 × NT$ {Number(settings.price_per_ping).toLocaleString()} / 坪
-              </p>
-            </div>
-            <p className="text-xl font-bold text-blue-700">NT$ {calculatedCost.toLocaleString()}</p>
-          </div>
-        )}
-
-        <div className="grid grid-cols-2 gap-3 mb-3">
-          <div>
-            <label className="text-xs font-medium text-blue-700">募資總金額</label>
-            <p className="text-xs text-gray-400 mb-1">向股東募集的金額</p>
-            <div className="flex">
-              <span className="border border-r-0 border-blue-200 rounded-l-xl px-3 py-2 text-sm text-blue-400 bg-white">NT$</span>
-              <input type="number" min="0"
-                className="flex-1 border border-blue-200 bg-white rounded-r-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                value={settings.total_budget}
-                onChange={e => setSettings(s => ({ ...s, total_budget: e.target.value }))}
-                placeholder={calculatedCost ? String(calculatedCost) : '2,400,000'} />
-            </div>
-          </div>
-          <div>
-            <label className="text-xs font-medium text-blue-700">釋出股份比例</label>
-            <p className="text-xs text-gray-400 mb-1">對應募資金額的股份</p>
-            <div className="flex">
-              <input type="number" step="0.1" min="0" max="100"
-                className="flex-1 border border-blue-200 bg-white rounded-l-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                value={settings.released_pct}
-                onChange={e => setSettings(s => ({ ...s, released_pct: e.target.value }))}
-                placeholder="30" />
-              <span className="border border-l-0 border-blue-200 rounded-r-xl px-3 py-2 text-sm text-blue-400 bg-white">%</span>
-            </div>
-          </div>
-        </div>
-
-        {valuePerPct !== null && (
-          <div className="bg-white rounded-xl px-4 py-2.5 mb-3 flex items-center justify-between">
-            <p className="text-xs text-gray-500">每 1% 股份對應金額</p>
-            <p className="text-sm font-bold text-indigo-700">NT$ {valuePerPct.toLocaleString()}</p>
-          </div>
-        )}
-
-        <button onClick={saveSettings} disabled={savingSettings}
-          className="w-full bg-blue-600 text-white py-2 rounded-xl text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors">
-          {savingSettings ? '儲存中...' : '儲存設定'}
-        </button>
-      </div>
-
-      {/* Budget items */}
-      {items.length === 0 ? (
-        <div className="text-center py-16 text-gray-400 bg-white rounded-2xl border border-gray-200">
-          <p className="text-lg font-medium text-gray-600 mb-1">尚無預算項目</p>
-          <p className="text-sm">新增各項費用預算，追蹤建置成本</p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {CATEGORIES.map(cat => {
-            const catItems = grouped[cat]
-            if (catItems.length === 0) return null
-            const catTotal = catItems.reduce((s, i) => s + i.estimated_amount, 0)
-            return (
-              <div key={cat} className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-                <div className="px-5 py-3 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
-                  <span className="font-semibold text-gray-700 text-sm">{cat}</span>
-                  <span className="text-sm text-gray-500">NT$ {catTotal.toLocaleString()}</span>
+        {tab === 'overview' && (
+          <>
+            <div className="bg-white rounded-2xl border border-gray-200 p-5 mb-6">
+              <h2 className="font-semibold text-gray-900 mb-4">預算計算設定</h2>
+              <div className="grid grid-cols-3 gap-4 mb-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-700">坪數</label>
+                  <input type="number" className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={form.sqft} onChange={e => setForm(f => ({ ...f, sqft: e.target.value }))} placeholder="0" />
                 </div>
-                <div className="divide-y divide-gray-50">
-                  {catItems.map(item => (
-                    <div key={item.id} className="px-5 py-3 flex items-center justify-between group">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-800">{item.name}</p>
-                        {item.notes && <p className="text-xs text-gray-400 mt-0.5">{item.notes}</p>}
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-sm font-semibold text-gray-700">NT$ {item.estimated_amount.toLocaleString()}</span>
-                        <div className="opacity-0 group-hover:opacity-100 flex gap-1 transition-opacity">
-                          <button onClick={() => startEdit(item)} className="text-xs text-blue-500 hover:text-blue-700 px-2 py-1">編輯</button>
-                          <button onClick={() => deleteItem(item.id)} className="text-xs text-red-400 hover:text-red-600 px-2 py-1">刪除</button>
-                        </div>
-                      </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">每坪單價（元）</label>
+                  <input type="number" className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={form.price_per_sqft} onChange={e => setForm(f => ({ ...f, price_per_sqft: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">對外募資上限</label>
+                  <div className="mt-1 w-full border border-gray-100 bg-gray-50 rounded-xl px-3 py-2 text-sm text-gray-500">
+                    30%（固定）
+                  </div>
+                </div>
+              </div>
+              {sqft > 0 && (
+                <div className="grid grid-cols-3 gap-3 mb-4 p-3 bg-gray-50 rounded-xl text-sm">
+                  <div><span className="text-gray-400">總預算：</span><span className="font-semibold text-gray-900">NT$ {totalBudget.toLocaleString()}</span></div>
+                  <div><span className="text-gray-400">總估值：</span><span className="font-semibold text-gray-900">NT$ {Math.round(totalValuation).toLocaleString()}</span></div>
+                  <div><span className="text-gray-400">1% 價值：</span><span className="font-semibold text-gray-900">NT$ {Math.round(onePercent).toLocaleString()}</span></div>
+                </div>
+              )}
+              <button onClick={saveSettings} disabled={saving}
+                className="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                {saving ? '儲存中...' : saved ? '✓ 已儲存' : '儲存'}
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+              {[
+                { label: '總預算', value: totalBudget, color: 'text-blue-600' },
+                { label: '實際支出', value: totalActual, color: 'text-gray-900' },
+                { label: remaining >= 0 ? '預算剩餘' : '超支金額', value: Math.abs(remaining), color: remaining >= 0 ? 'text-teal-600' : 'text-red-500' },
+                { label: '待付款', value: pending, color: 'text-amber-600' },
+              ].map(card => (
+                <div key={card.label} className="bg-white rounded-2xl border border-gray-200 p-4">
+                  <p className="text-xs text-gray-400 mb-1">{card.label}</p>
+                  <p className={`text-lg font-bold ${card.color}`}>NT$ {card.value.toLocaleString()}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+              <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                <h2 className="font-semibold text-gray-900">費用類別明細</h2>
+                <Link href={`/stores/${id}/expenses`} className="text-sm text-blue-600 hover:underline">前往費用記錄 →</Link>
+              </div>
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>{['類別', '實際支出', '佔比'].map(h => <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-gray-500">{h}</th>)}</tr>
+                </thead>
+                <tbody>
+                  {byCategory.map(({ cat, actual }) => (
+                    <tr key={cat} className="border-t border-gray-100 hover:bg-gray-50">
+                      <td className="px-5 py-3"><span className={`text-xs px-2 py-0.5 rounded-full font-medium ${CAT_COLORS[cat]}`}>{cat}</span></td>
+                      <td className="px-5 py-3 text-sm font-medium text-gray-900">{actual > 0 ? `NT$ ${actual.toLocaleString()}` : <span className="text-gray-300">—</span>}</td>
+                      <td className="px-5 py-3">
+                        {actual > 0 && totalActual > 0 ? (
+                          <div className="flex items-center gap-2">
+                            <div className="w-20 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                              <div className="h-full bg-blue-500 rounded-full" style={{ width: `${Math.min(100, (actual / totalActual) * 100)}%` }} />
+                            </div>
+                            <span className="text-xs text-gray-500">{((actual / totalActual) * 100).toFixed(1)}%</span>
+                          </div>
+                        ) : <span className="text-gray-300 text-sm">—</span>}
+                      </td>
+                    </tr>
+                  ))}
+                  {totalActual > 0 && (
+                    <tr className="border-t-2 border-gray-200 bg-gray-50">
+                      <td className="px-5 py-3 text-sm font-semibold text-gray-900">合計</td>
+                      <td className="px-5 py-3 text-sm font-semibold text-gray-900">NT$ {totalActual.toLocaleString()}</td>
+                      <td className="px-5 py-3 text-sm text-gray-400">100%</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+              {totalActual === 0 && (
+                <div className="py-10 text-center text-gray-400 text-sm">尚無費用記錄</div>
+              )}
+            </div>
+          </>
+        )}
+
+        {tab === 'investor' && (
+          <div className="space-y-4">
+            <div className="bg-white rounded-2xl border border-gray-200 p-6">
+              <h2 className="font-semibold text-gray-900 mb-4">募資概況</h2>
+              {sqft === 0 ? (
+                <p className="text-amber-600 text-sm bg-amber-50 rounded-xl px-4 py-3">請先在「預算總覽」頁籤填入坪數和每坪單價</p>
+              ) : (
+                <div className="grid grid-cols-3 gap-4">
+                  {[
+                    { label: '總估值', value: Math.round(totalValuation) },
+                    { label: `募資金額（${investorPct}%）`, value: Math.round(totalValuation * investorPct / 100) }, // investorPct = 30
+                    { label: '1% 股份價值', value: Math.round(onePercent) },
+                  ].map(item => (
+                    <div key={item.label} className="bg-gray-50 rounded-xl p-4">
+                      <p className="text-xs text-gray-400 mb-1">{item.label}</p>
+                      <p className="text-lg font-bold text-gray-900">NT$ {item.value.toLocaleString()}</p>
                     </div>
                   ))}
                 </div>
-              </div>
-            )
-          })}
-
-          <div className="bg-gray-900 rounded-2xl p-5 flex items-center justify-between">
-            <span className="font-bold text-white">預算明細合計</span>
-            <span className="text-xl font-bold text-white">NT$ {total.toLocaleString()}</span>
-          </div>
-        </div>
-      )}
-
-      {showAdd && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-xl">
-            <h2 className="font-bold text-gray-900 text-lg mb-5">{editId ? '編輯預算項目' : '新增預算項目'}</h2>
-            <div className="space-y-4">
-              <div>
-                <label className="text-sm font-medium text-gray-700">分類</label>
-                <select className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
-                  {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700">項目名稱 *</label>
-                <input autoFocus className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="例：廚房設備" />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700">預估金額 *</label>
-                <div className="flex mt-1">
-                  <span className="border border-r-0 border-gray-200 rounded-l-xl px-3 py-2.5 text-sm text-gray-400 bg-gray-50">NT$</span>
-                  <input type="number" className="flex-1 border border-gray-200 rounded-r-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={form.estimated_amount} onChange={e => setForm(f => ({ ...f, estimated_amount: e.target.value }))} placeholder="0" />
-                </div>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700">備註</label>
-                <input className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
-              </div>
+              )}
             </div>
-            <div className="flex gap-2 mt-6">
-              <button onClick={() => { setShowAdd(false); setEditId(null) }}
-                className="flex-1 border border-gray-200 text-gray-600 py-2.5 rounded-xl text-sm hover:bg-gray-50 transition-colors">取消</button>
-              <button onClick={save} disabled={!form.name || !form.estimated_amount || saving}
-                className="flex-1 bg-blue-600 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors">
-                {saving ? '儲存中...' : '儲存'}
-              </button>
+            <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center">
+              <p className="text-gray-500 mb-4">前往股東收款頁管理投資人與付款狀態</p>
+              <Link href={`/stores/${id}/investors`}
+                className="bg-blue-600 text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 inline-block">
+                前往股東收款 →
+              </Link>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }

@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 
-export default function StorePage({ params }: { params: { id: string } }) {
-  redirect(`/stores/${params.id}/overview`)
+export default async function StorePage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+  redirect(`/stores/${id}/overview`)
 }
