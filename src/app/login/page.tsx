@@ -17,7 +17,7 @@ export default function LoginPage() {
     const { error: err } = await supabase.auth.signInWithPassword({ email, password })
     setLoading(false)
     if (err) {
-      setError('帳號或密碼錯誤，請重新輸入')
+      setError(err.message)
     } else {
       window.location.href = '/'
     }
