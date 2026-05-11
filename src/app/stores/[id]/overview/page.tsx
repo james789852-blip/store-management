@@ -294,35 +294,44 @@ export default function OverviewPage() {
         </div>
 
         {/* ── 2. Alert bar ── */}
-        {hasAlert && (
-          <div className="flex items-center justify-between gap-4 px-4 py-3.5 rounded-[10px] border"
-            style={{ background: '#FAEEDA', borderColor: '#FAC775' }}>
-            <div className="flex items-start gap-3 min-w-0">
-              <div className="w-7 h-7 rounded-full bg-orange-500 flex items-center justify-center shrink-0 mt-0.5">
-                <span className="text-white text-sm font-bold leading-none">!</span>
+        {hasAlert && (() => {
+          const parts: string[] = []
+          if (daysToOpen !== null && daysToOpen > 0) parts.push(`距開幕剩 ${daysToOpen} 天`)
+          if (overdueTodos.length > 0 && overdueSchs.length > 0)
+            parts.push(`有 ${overdueTodos.length} 項逾期待辦、${overdueSchs.length} 項逾期工程`)
+          else if (overdueTodos.length > 0)
+            parts.push(`有 ${overdueTodos.length} 項逾期待辦`)
+          else
+            parts.push(`有 ${overdueSchs.length} 項逾期工程`)
+
+          const subItems = [
+            ...overdueSchs.slice(0, 2).map(s => `${s.task_name}逾期`),
+            ...overdueTodos.slice(0, 3).map(t => t.title),
+          ].slice(0, 4)
+
+          return (
+            <div className="flex items-center justify-between gap-4 px-4 py-3.5 rounded-[10px] border"
+              style={{ background: '#FAEEDA', borderColor: '#FAC775' }}>
+              <div className="flex items-start gap-3 min-w-0">
+                <div className="w-7 h-7 rounded-full bg-orange-400 flex items-center justify-center shrink-0 mt-0.5">
+                  <span className="text-white text-sm font-bold leading-none">!</span>
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-orange-900">{parts.join('，')}</p>
+                  {subItems.length > 0 && (
+                    <p className="text-xs text-orange-700/80 mt-0.5 truncate">
+                      {subItems.join('・')}
+                    </p>
+                  )}
+                </div>
               </div>
-              <div className="min-w-0">
-                <p className="text-sm font-bold text-orange-900">
-                  {overdueTodos.length > 0 && overdueSchs.length > 0
-                    ? `${overdueTodos.length} 筆逾期待辦、${overdueSchs.length} 項逾期工程`
-                    : overdueTodos.length > 0
-                    ? `${overdueTodos.length} 筆待辦事項已逾期`
-                    : `${overdueSchs.length} 項建置工程已逾期`}
-                </p>
-                {overdueTodos.length > 0 && (
-                  <p className="text-xs text-orange-700 mt-0.5 truncate">
-                    {overdueTodos.slice(0, 2).map(t => t.title).join('、')}
-                    {overdueTodos.length > 2 ? ` 等 ${overdueTodos.length} 筆` : ''}
-                  </p>
-                )}
-              </div>
+              <Link href={`/stores/${id}/todos`}
+                className="shrink-0 px-4 py-2 bg-white border border-orange-200 text-orange-800 text-sm font-semibold rounded-lg hover:bg-orange-50 transition-colors whitespace-nowrap shadow-sm">
+                立即處理
+              </Link>
             </div>
-            <Link href={`/stores/${id}/todos`}
-              className="shrink-0 px-3.5 py-1.5 bg-orange-500 text-white text-xs font-semibold rounded-lg hover:bg-orange-600 transition-colors whitespace-nowrap">
-              立即處理
-            </Link>
-          </div>
-        )}
+          )
+        })()}
 
         {/* ── 3. 建置整體進度條 ── */}
         {schTotal > 0 && (
@@ -335,26 +344,30 @@ export default function OverviewPage() {
               <div className="h-full rounded-full transition-all duration-500"
                 style={{ width: `${schPct}%`, background: 'linear-gradient(90deg, #3B82F6 0%, #10B981 100%)' }} />
             </div>
-            {/* Step dots — 最多顯示 6 個，均勻分佈 */}
+            {/* Step dots — 近期工項（最後一個已完成 + 進行中/逾期 + 下一批待開始），最多 6 個 */}
             {(() => {
-              const visible = schedules.slice(0, 6)
+              const lastDone = schedules.filter(s => s.status === 'done').slice(-1)
+              const nonDone  = schedules.filter(s => s.status !== 'done')
+              const visible  = [...lastDone, ...nonDone].slice(0, 6)
+              if (visible.length === 0) return null
               return (
                 <div className="relative pt-0 pb-1">
-                  {/* connecting line */}
                   <div className="absolute left-0 right-0 h-0.5 bg-gray-200" style={{ top: 14 }} />
                   <div className="flex justify-between relative">
-                    {visible.map((s, i) => (
+                    {visible.map((s) => (
                       <div key={s.id} className="flex flex-col items-center flex-1">
                         <div className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold relative z-10 ring-2 ring-white
                           ${s.status === 'done'    ? 'bg-emerald-500 text-white' :
                             s.status === 'ongoing' ? 'bg-blue-600 text-white' :
                             s.status === 'overdue' ? 'bg-red-500 text-white' :
                                                       'bg-gray-200 text-gray-500'}`}>
-                          {s.status === 'done' ? '✓' : s.status === 'ongoing' ? '↻' : i + 1}
+                          {s.status === 'done' ? '✓' : s.status === 'ongoing' ? '↻' :
+                           s.status === 'overdue' ? '!' : '○'}
                         </div>
                         <p className={`text-[11px] mt-2 text-center leading-tight
                           ${s.status === 'done'    ? 'text-emerald-600 font-medium' :
                             s.status === 'ongoing' ? 'text-blue-600 font-medium' :
+                            s.status === 'overdue' ? 'text-red-500 font-medium' :
                                                       'text-gray-400'}`}
                           title={s.task_name}>
                           {trunc(s.task_name, 5)}
