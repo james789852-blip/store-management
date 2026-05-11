@@ -6,10 +6,10 @@ import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import { differenceInDays, differenceInMonths } from 'date-fns'
 import {
-  STORE_STATUS_LABEL, SCHEDULE_STATUS_LABEL, LOG_STATUS_LABEL,
-  type Store, type StoreStatus, type ScheduleStatus, type LogStatus,
+  STORE_STATUS_LABEL, SCHEDULE_STATUS_LABEL, LOG_STATUS_LABEL, TODO_PRIORITY_LABEL,
+  type Store, type StoreStatus, type ScheduleStatus, type LogStatus, type TodoPriority,
 } from '@/types'
-import { STORE_STATUS_BADGE, SCHEDULE_BADGE, LOG_BADGE } from '@/lib/colors'
+import { STORE_STATUS_BADGE, SCHEDULE_BADGE, LOG_BADGE, TODO_PRIORITY_DOT, TODO_PRIORITY_BADGE } from '@/lib/colors'
 
 // ── Local types ───────────────────────────────────────────────
 
@@ -475,11 +475,11 @@ export default function OverviewPage() {
           {/* 股東募資 */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col">
             <p className="text-xs font-medium text-gray-400 mb-2">股東募資</p>
-            <p className="text-2xl font-bold text-gray-900 tracking-tight">{totalInvPct.toFixed(1)}%</p>
+            <p className="text-2xl font-bold text-gray-900 tracking-tight">{totalInvPct.toFixed(2)}%</p>
             {totalInvAmount > 0 && (
               <p className="text-sm font-semibold text-gray-600 mt-0.5">{fmtMoney(totalInvAmount)}</p>
             )}
-            <p className="text-xs text-gray-400 mt-1">目標 {targetInvPct}% · 剩 {remainInvPct.toFixed(1)}%</p>
+            <p className="text-xs text-gray-400 mt-1">目標 {targetInvPct}% · 剩 {remainInvPct.toFixed(2)}%</p>
             <Link href={`/stores/${id}/investors`} className="mt-auto pt-3 text-xs text-blue-500 hover:text-blue-600 font-medium">
               查看股東 →
             </Link>
@@ -536,15 +536,18 @@ export default function OverviewPage() {
             ) : (
               <div className="space-y-2.5">
                 {sortedTodos.slice(0, 5).map(todo => {
-                  const isOverdue = !!(todo.due_date && todo.due_date < today)
-                  const isToday   = todo.due_date === today
+                  const priority = (todo.priority as TodoPriority) || 'low'
                   const timeLabel = todoTimeLabel(todo.due_date, today)
                   return (
                     <div key={todo.id} className="flex items-start gap-2.5">
-                      <div className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${
-                        isOverdue ? 'bg-red-400' : isToday ? 'bg-orange-400' : 'bg-gray-300'}`} />
+                      <div className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${TODO_PRIORITY_DOT[priority]}`} />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm text-gray-800 truncate leading-snug">{todo.title}</p>
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <p className="text-sm text-gray-800 truncate leading-snug flex-1">{todo.title}</p>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold shrink-0 ${TODO_PRIORITY_BADGE[priority]}`}>
+                            {TODO_PRIORITY_LABEL[priority]}
+                          </span>
+                        </div>
                         {timeLabel.text && (
                           <p className={`text-xs mt-0.5 ${timeLabel.cls}`}>{timeLabel.text}</p>
                         )}
