@@ -69,6 +69,32 @@ function trunc(s: string, n: number): string {
   return s.length > n ? s.slice(0, n) + '…' : s
 }
 
+function todoTimeLabel(dueDate: string | null, today: string): { text: string; cls: string } {
+  if (!dueDate) return { text: '', cls: '' }
+  const diff = differenceInDays(parseLocal(dueDate), parseLocal(today))
+  if (diff < 0)  return { text: `已逾期 ${Math.abs(diff)} 天`, cls: 'text-red-500 font-semibold' }
+  if (diff === 0) return { text: '今日截止', cls: 'text-orange-500 font-semibold' }
+  if (diff === 1) return { text: '明日截止', cls: 'text-orange-400 font-medium' }
+  if (diff <= 7)  return { text: `還有 ${diff} 天`, cls: 'text-amber-500 font-medium' }
+  return { text: dueDate, cls: 'text-gray-400' }
+}
+
+function scheduleTimeLabel(s: OvSchedule, today: string): string {
+  if (s.status === 'overdue' && s.end_date) {
+    const d = differenceInDays(parseLocal(today), parseLocal(s.end_date))
+    return `逾期 ${Math.max(0, d)} 天`
+  }
+  if (s.status === 'ongoing' && s.end_date) {
+    const d = differenceInDays(parseLocal(s.end_date), parseLocal(today))
+    return d >= 0 ? `${d} 天後完工` : `逾期 ${Math.abs(d)} 天`
+  }
+  if (s.status === 'pending' && s.start_date) {
+    const d = differenceInDays(parseLocal(s.start_date), parseLocal(today))
+    return d >= 0 ? `${d} 天後開始` : ''
+  }
+  return ''
+}
+
 // ── Skeleton ──────────────────────────────────────────────────
 
 function Skel({ cls = '' }: { cls?: string }) {
@@ -198,8 +224,18 @@ export default function OverviewPage() {
     const rank = (t: OvTodo) => t.due_date && t.due_date < today ? 0 : t.due_date === today ? 1 : 2
     const dr = rank(a) - rank(b)
     if (dr !== 0) return dr
-    return (a.due_date ?? '').localeCompare(b.due_date ?? '')
+    return (a.due_date ?? '9999').localeCompare(b.due_date ?? '9999')
   })
+
+  const recentSchedules = [...schedules]
+    .filter(s => s.status !== 'done')
+    .sort((a, b) => {
+      const rank: Record<string, number> = { overdue: 0, ongoing: 1, pending: 2 }
+      const dr = (rank[a.status] ?? 3) - (rank[b.status] ?? 3)
+      if (dr !== 0) return dr
+      return (a.start_date ?? '').localeCompare(b.start_date ?? '')
+    })
+    .slice(0, 6)
 
   const hasAlert = overdueTodos.length > 0 || overdueSchs.length > 0
 
@@ -443,16 +479,15 @@ export default function OverviewPage() {
                 {sortedTodos.slice(0, 5).map(todo => {
                   const isOverdue = !!(todo.due_date && todo.due_date < today)
                   const isToday   = todo.due_date === today
+                  const timeLabel = todoTimeLabel(todo.due_date, today)
                   return (
                     <div key={todo.id} className="flex items-start gap-2.5">
                       <div className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${
                         isOverdue ? 'bg-red-400' : isToday ? 'bg-orange-400' : 'bg-gray-300'}`} />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm text-gray-800 truncate leading-snug">{todo.title}</p>
-                        {todo.due_date && (
-                          <p className={`text-xs mt-0.5 ${isOverdue ? 'text-red-500 font-medium' : isToday ? 'text-orange-500' : 'text-gray-400'}`}>
-                            {todo.due_date}{isOverdue ? ' ✕ 已逾期' : isToday ? ' · 今日截止' : ''}
-                          </p>
+                        {timeLabel.text && (
+                          <p className={`text-xs mt-0.5 ${timeLabel.cls}`}>{timeLabel.text}</p>
                         )}
                       </div>
                     </div>
@@ -473,22 +508,28 @@ export default function OverviewPage() {
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-sm font-semibold text-gray-700">建置排程</h2>
-              <Link href={`/stores/${id}/schedule`} className="text-xs text-blue-500 hover:text-blue-600 font-medium">查看甘特圖 →</Link>
+              <Link href={`/stores/${id}/schedule`} className="text-xs text-blue-500 hover:text-blue-600 font-medium">查看排程 →</Link>
             </div>
-            {schedules.length === 0 ? (
-              <p className="text-sm text-gray-300 text-center py-10">尚無工項資料</p>
+            {recentSchedules.length === 0 ? (
+              <p className="text-sm text-gray-300 text-center py-10">近期無待處理工項</p>
             ) : (
               <div className="space-y-3">
-                {schedules.slice(0, 6).map(s => {
+                {recentSchedules.map(s => {
                   const pct = schedulePct(s)
-                  const barCls = s.status === 'done'    ? 'bg-emerald-400'
-                               : s.status === 'ongoing' ? 'bg-blue-400'
+                  const barCls = s.status === 'ongoing' ? 'bg-blue-400'
                                : s.status === 'overdue' ? 'bg-red-400'
                                : 'bg-gray-200'
+                  const timeHint = scheduleTimeLabel(s, today)
                   return (
                     <div key={s.id} className="flex items-center gap-3">
-                      <p className="text-xs text-gray-600 truncate shrink-0" style={{ width: 80 }}
-                        title={s.task_name}>{s.task_name}</p>
+                      <div className="shrink-0" style={{ width: 80 }}>
+                        <p className="text-xs text-gray-700 truncate font-medium" title={s.task_name}>{s.task_name}</p>
+                        {timeHint && (
+                          <p className={`text-[10px] mt-0.5 ${s.status === 'overdue' ? 'text-red-500' : s.status === 'ongoing' ? 'text-blue-500' : 'text-gray-400'}`}>
+                            {timeHint}
+                          </p>
+                        )}
+                      </div>
                       <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
                         <div className={`h-full rounded-full transition-all ${barCls}`} style={{ width: `${pct}%` }} />
                       </div>
