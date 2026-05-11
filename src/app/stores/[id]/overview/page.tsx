@@ -295,31 +295,40 @@ export default function OverviewPage() {
               <span className="text-sm font-semibold text-gray-700">建置整體進度</span>
               <span className="text-xs text-gray-500">{schPct}% · {schDone}/{schTotal} 工項完成</span>
             </div>
-            <div className="h-2 bg-gray-100 rounded-full overflow-hidden mb-5">
+            <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden mb-6">
               <div className="h-full rounded-full transition-all duration-500"
                 style={{ width: `${schPct}%`, background: 'linear-gradient(90deg, #3B82F6 0%, #10B981 100%)' }} />
             </div>
-            <div className="flex items-start overflow-x-auto pb-1">
-              {schedules.map((s, i) => (
-                <div key={s.id} className="flex items-center flex-1 min-w-0">
-                  <div className="flex flex-col items-center" style={{ minWidth: 44 }}>
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0
-                      ${s.status === 'done'    ? 'bg-emerald-500 text-white' :
-                        s.status === 'ongoing' ? 'bg-blue-500 text-white' :
-                        s.status === 'overdue' ? 'bg-red-500 text-white' :
-                                                  'bg-gray-200 text-gray-500'}`}>
-                      {s.status === 'done' ? '✓' : s.status === 'ongoing' ? '↻' : i + 1}
-                    </div>
-                    <p className="text-[9px] text-gray-400 mt-1 text-center w-11 truncate leading-tight" title={s.task_name}>
-                      {trunc(s.task_name, 5)}
-                    </p>
+            {/* Step dots — 最多顯示 6 個，均勻分佈 */}
+            {(() => {
+              const visible = schedules.slice(0, 6)
+              return (
+                <div className="relative pt-0 pb-1">
+                  {/* connecting line */}
+                  <div className="absolute left-0 right-0 h-0.5 bg-gray-200" style={{ top: 14 }} />
+                  <div className="flex justify-between relative">
+                    {visible.map((s, i) => (
+                      <div key={s.id} className="flex flex-col items-center flex-1">
+                        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold relative z-10 ring-2 ring-white
+                          ${s.status === 'done'    ? 'bg-emerald-500 text-white' :
+                            s.status === 'ongoing' ? 'bg-blue-600 text-white' :
+                            s.status === 'overdue' ? 'bg-red-500 text-white' :
+                                                      'bg-gray-200 text-gray-500'}`}>
+                          {s.status === 'done' ? '✓' : s.status === 'ongoing' ? '↻' : i + 1}
+                        </div>
+                        <p className={`text-[11px] mt-2 text-center leading-tight
+                          ${s.status === 'done'    ? 'text-emerald-600 font-medium' :
+                            s.status === 'ongoing' ? 'text-blue-600 font-medium' :
+                                                      'text-gray-400'}`}
+                          title={s.task_name}>
+                          {trunc(s.task_name, 5)}
+                        </p>
+                      </div>
+                    ))}
                   </div>
-                  {i < schedules.length - 1 && (
-                    <div className={`flex-1 h-0.5 mb-5 ${s.status === 'done' ? 'bg-emerald-300' : 'bg-gray-200'}`} />
-                  )}
                 </div>
-              ))}
-            </div>
+              )
+            })()}
           </div>
         )}
 
