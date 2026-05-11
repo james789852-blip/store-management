@@ -475,11 +475,11 @@ export default function OverviewPage() {
           {/* 股東募資 */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col">
             <p className="text-xs font-medium text-gray-400 mb-2">股東募資</p>
-            <p className="text-2xl font-bold text-gray-900 tracking-tight">{totalInvPct.toFixed(2)}%</p>
+            <p className="text-2xl font-bold text-gray-900 tracking-tight">{totalInvPct.toFixed(3)}%</p>
             {totalInvAmount > 0 && (
               <p className="text-sm font-semibold text-gray-600 mt-0.5">{fmtMoney(totalInvAmount)}</p>
             )}
-            <p className="text-xs text-gray-400 mt-1">目標 {targetInvPct}% · 剩 {remainInvPct.toFixed(2)}%</p>
+            <p className="text-xs text-gray-400 mt-1">目標 {targetInvPct}% · 剩 {remainInvPct.toFixed(3)}%</p>
             <Link href={`/stores/${id}/investors`} className="mt-auto pt-3 text-xs text-blue-500 hover:text-blue-600 font-medium">
               查看股東 →
             </Link>
