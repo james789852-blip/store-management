@@ -192,11 +192,11 @@ export default function EquipmentPage() {
   if (loading) return <div className="flex items-center justify-center py-32 text-gray-400">載入中...</div>
 
   return (
-    <div className="p-8 max-w-5xl mx-auto">
+    <div className="p-4 sm:p-8 max-w-5xl mx-auto">
       {/* Header */}
-      <div className="flex items-start justify-between mb-6">
+      <div className="flex flex-wrap items-start justify-between gap-3 mb-5 sm:mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">設備清單</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">設備清單</h1>
           <div className="flex flex-wrap items-center gap-3 mt-2">
             <span className="text-sm text-gray-500">共 <span className="font-semibold text-gray-700">{items.length}</span> 項</span>
             <span className="text-gray-300">|</span>
@@ -299,7 +299,7 @@ export default function EquipmentPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <div className="opacity-0 group-hover:opacity-100 flex gap-1 transition-opacity">
+                      <div className="flex gap-1 transition-opacity">
                         <button onClick={() => startEdit(item)} className="text-xs text-blue-500 hover:text-blue-700 px-2 py-1">編輯</button>
                         <button onClick={() => setDeleteId(item.id)} className="text-xs text-red-400 hover:text-red-600 px-2 py-1">刪除</button>
                       </div>
@@ -328,8 +328,8 @@ export default function EquipmentPage() {
 
       {/* Add / Edit Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-lg p-6 shadow-xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 sm:p-4">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg p-5 sm:p-6 shadow-xl max-h-[90vh] overflow-y-auto">
             <h2 className="font-bold text-gray-900 text-lg mb-5">{editId ? '編輯設備' : '新增設備'}</h2>
             <div className="space-y-3">
               {/* 名稱 + 類別 */}

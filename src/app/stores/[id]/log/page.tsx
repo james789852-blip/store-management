@@ -190,13 +190,13 @@ export default function LogPage() {
 
   // ── Render ─────────────────────────────────────────────────────────────
   return (
-    <div className="bg-gray-50 min-h-full p-8">
+    <div className="bg-gray-50 min-h-full p-4 sm:p-8">
       <div className="max-w-4xl mx-auto">
 
         {/* ── Header ── */}
-        <div className="flex items-start justify-between mb-6">
+        <div className="flex flex-wrap items-start justify-between gap-3 mb-5 sm:mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">施工日誌</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">施工日誌</h1>
             <div className="flex items-center gap-4 mt-1.5 text-sm text-gray-400">
               <span>共 {logs.length} 筆記錄</span>
               {issueCount > 0 && (
@@ -298,15 +298,15 @@ export default function LogPage() {
 
       {/* ── Add / Edit Modal ── */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-lg p-6 shadow-xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 sm:p-4">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg p-5 sm:p-6 shadow-xl max-h-[90vh] overflow-y-auto">
             <h2 className="font-bold text-gray-900 text-lg mb-5">
               {editId ? '編輯日誌' : '新增施工日誌'}
             </h2>
 
             <div className="space-y-4">
               {/* Date + Weather */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-sm font-medium text-gray-700">日期 *</label>
                   <input
@@ -378,9 +378,9 @@ export default function LogPage() {
               {/* Progress */}
               <div>
                 <label className="text-sm font-medium text-gray-700">今日施工進度</label>
-                <input
-                  type="text"
-                  className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                <textarea
+                  rows={4}
+                  className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                   value={form.progress}
                   onChange={e => setForm(f => ({ ...f, progress: e.target.value }))}
                   placeholder="例：完成廚房設備定位，開始配管"
@@ -497,7 +497,7 @@ function LogCard({
           </span>
 
           {/* Edit / Delete — visible on hover */}
-          <div className="opacity-0 group-hover:opacity-100 flex gap-1 transition-opacity">
+          <div className="flex gap-1 transition-opacity">
             <button
               onClick={onEdit}
               className="text-xs text-blue-500 hover:text-blue-700 px-2 py-1"

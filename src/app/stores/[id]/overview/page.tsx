@@ -16,14 +16,6 @@ const SCHEDULE_STATUS_LABEL: Record<string, string> = {
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-interface StoreStaff {
-  id: string
-  role: string
-  name: string
-  phone: string | null
-  sort_order: number
-}
-
 interface TodayTask {
   id: string
   task_name: string
@@ -93,7 +85,6 @@ export default function OverviewPage() {
   const [pendingTodos, setPendingTodos] = useState<{ id: string; title: string; due_date: string | null; priority: string }[]>([])
   const [todayTasks, setTodayTasks] = useState<TodayTask[]>([])
   const [recentLogs, setRecentLogs] = useState<RecentLog[]>([])
-  const [staff, setStaff] = useState<StoreStaff[]>([])
 
   useEffect(() => { loadAll() }, [id])  // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -107,7 +98,6 @@ export default function OverviewPage() {
       { data: todos },
       { data: logs },
       { data: schedules },
-      { data: staffData },
     ] = await Promise.all([
       supabase.from('stores').select('*').eq('id', id).single(),
       supabase.from('expenses').select('total').eq('store_id', id),
@@ -119,7 +109,6 @@ export default function OverviewPage() {
         .neq('status', 'done')
         .lte('start_date', today)
         .gte('end_date', today),
-      supabase.from('store_staff').select('id, role, name, phone, sort_order').eq('store_id', id).order('sort_order'),
     ])
 
     if (storeData) {
@@ -141,7 +130,6 @@ export default function OverviewPage() {
 
     setRecentLogs(logs || [])
     setTodayTasks((schedules || []) as TodayTask[])
-    setStaff((staffData || []) as StoreStaff[])
 
     setLoading(false)
   }
@@ -164,10 +152,6 @@ export default function OverviewPage() {
       seats: form.seats ?? null,
       wifi_ssid: form.wifi_ssid || null,
       wifi_password: form.wifi_password || null,
-      cctv_account: form.cctv_account || null,
-      cctv_password: form.cctv_password || null,
-      pos_account: form.pos_account || null,
-      pos_password: form.pos_password || null,
       owner_name: form.owner_name || null,
       owner_phone: form.owner_phone || null,
       landlord_name: form.landlord_name || null,
@@ -200,13 +184,13 @@ export default function OverviewPage() {
 
   return (
     <div className="bg-gray-50 min-h-full">
-      <div className="max-w-5xl mx-auto px-6 py-8">
+      <div className="max-w-5xl mx-auto px-4 py-5 sm:px-6 sm:py-8">
 
         {/* ── Header ── */}
-        <div className="flex items-start justify-between mb-6">
+        <div className="flex flex-wrap items-start justify-between gap-3 mb-5 sm:mb-6">
           <div>
             <div className="flex items-center gap-3 mb-1.5">
-              <h1 className="text-2xl font-bold text-gray-900">{store.name}</h1>
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">{store.name}</h1>
               <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${STORE_STATUS_BADGE[store.status]}`}>
                 {STORE_STATUS_LABEL[store.status]}
               </span>
@@ -224,20 +208,20 @@ export default function OverviewPage() {
         </div>
 
         {/* ── 統計卡 ── */}
-        <div className="grid grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 mb-6 sm:mb-8">
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
             <p className="text-xs font-medium text-gray-400 mb-3">累計費用</p>
-            <p className="text-2xl font-bold text-gray-900 tracking-tight">NT$ {totalExpenses.toLocaleString()}</p>
+            <p className="text-base sm:text-2xl font-bold text-gray-900 tracking-tight truncate">NT$ {totalExpenses.toLocaleString()}</p>
             <Link href={`/stores/${id}/expenses`} className="inline-flex items-center gap-1 text-xs text-blue-500 hover:text-blue-600 mt-3 font-medium">查看明細 →</Link>
           </div>
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
             <p className="text-xs font-medium text-gray-400 mb-3">{daysToOpen !== null && daysToOpen >= 0 ? '距開幕' : '已開幕'}</p>
-            <p className={`text-2xl font-bold tracking-tight ${daysToOpen !== null && daysToOpen <= 30 && daysToOpen >= 0 ? 'text-orange-500' : 'text-gray-900'}`}>
+            <p className={`text-base sm:text-2xl font-bold tracking-tight truncate ${daysToOpen !== null && daysToOpen <= 30 && daysToOpen >= 0 ? 'text-orange-500' : 'text-gray-900'}`}>
               {daysToOpen !== null ? `${Math.abs(daysToOpen)} 天` : '—'}
             </p>
             {store.open_date && <p className="text-xs text-gray-400 mt-3">{store.open_date}</p>}
           </div>
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <div className="col-span-2 sm:col-span-1 bg-white rounded-2xl border border-gray-100 shadow-sm p-5 min-w-0">
             <div className="flex items-center justify-between mb-3">
               <p className="text-xs font-medium text-gray-400">待辦事項</p>
               <div className="flex items-center gap-2">
@@ -280,11 +264,11 @@ export default function OverviewPage() {
           </div>
         </div>
 
-        {/* ── 主內容：左主欄 2/3 ＋ 右側欄 1/3 ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* ── 主內容：左 3/5 ＋ 右 2/5 ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
 
           {/* ── 左主欄 ── */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-3 space-y-6">
 
             {/* 基本資訊 */}
             {(() => {
@@ -296,16 +280,17 @@ export default function OverviewPage() {
                 { label: '月租金', value: fmtMoney(store.monthly_rent) },
                 { label: '押金', value: fmtMoney(store.deposit) },
                 { label: '開幕日', value: store.open_date },
+                { label: '租約到期日', value: store.lease_end_date },
                 { label: '營業時間', value: store.business_hours },
               ] as { label: string; value: string | null | undefined }[]).filter(f => f.value)
               return fields.length > 0 ? (
                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-                  <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">基本資訊</h2>
-                  <dl className="grid grid-cols-2 gap-x-8">
+                  <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">基本資訊</h2>
+                  <dl className="divide-y divide-gray-50">
                     {fields.map(f => (
-                      <div key={f.label} className="flex items-center justify-between py-3 border-b border-gray-50 last:border-0">
-                        <dt className="text-sm text-gray-400">{f.label}</dt>
-                        <dd className="text-sm font-semibold text-gray-800">{f.value}</dd>
+                      <div key={f.label} className="flex items-center justify-between py-2.5">
+                        <dt className="text-sm text-gray-400 shrink-0">{f.label}</dt>
+                        <dd className="text-sm font-semibold text-gray-800 text-right ml-4">{f.value}</dd>
                       </div>
                     ))}
                   </dl>
@@ -352,53 +337,7 @@ export default function OverviewPage() {
           </div>
 
           {/* ── 右側欄 ── */}
-          <div className="space-y-6">
-
-            {/* 人員聯絡 */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">人員聯絡</h2>
-              <div className="space-y-4">
-                {store.owner_name && (
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-sm font-bold text-blue-600 shrink-0">
-                      {store.owner_name[0]}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-900 truncate">{store.owner_name}</p>
-                      {store.owner_phone && <p className="text-xs text-gray-400 mt-0.5">{store.owner_phone}</p>}
-                    </div>
-                    <span className="text-[10px] bg-blue-50 text-blue-500 px-2 py-0.5 rounded-full font-semibold shrink-0">負責人</span>
-                  </div>
-                )}
-                {staff.map(s => (
-                  <div key={s.id} className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-indigo-100 flex items-center justify-center text-sm font-bold text-indigo-600 shrink-0">
-                      {s.name[0]}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-900 truncate">{s.name}</p>
-                      {s.phone && <p className="text-xs text-gray-400 mt-0.5">{s.phone}</p>}
-                    </div>
-                    <span className="text-[10px] bg-indigo-50 text-indigo-500 px-2 py-0.5 rounded-full font-semibold shrink-0">{s.role}</span>
-                  </div>
-                ))}
-                {store.landlord_name && (
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-amber-100 flex items-center justify-center text-sm font-bold text-amber-600 shrink-0">
-                      {store.landlord_name[0]}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-900 truncate">{store.landlord_name}</p>
-                      {store.landlord_phone && <p className="text-xs text-gray-400 mt-0.5">{store.landlord_phone}</p>}
-                    </div>
-                    <span className="text-[10px] bg-amber-50 text-amber-500 px-2 py-0.5 rounded-full font-semibold shrink-0">房東</span>
-                  </div>
-                )}
-                {!store.owner_name && staff.length === 0 && !store.landlord_name && (
-                  <p className="text-sm text-gray-300 text-center py-4">尚無人員資料</p>
-                )}
-              </div>
-            </div>
+          <div className="lg:col-span-2 space-y-6">
 
             {/* 最近日誌 */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
@@ -409,43 +348,29 @@ export default function OverviewPage() {
               {recentLogs.length === 0 ? (
                 <p className="text-sm text-gray-300 text-center py-4">尚無日誌記錄</p>
               ) : (
-                <div>
-                  {recentLogs.map((log, i) => (
-                    <div key={i} className="flex items-center gap-3 py-2.5 border-b border-gray-50 last:border-0">
-                      <div className="w-1.5 h-1.5 rounded-full bg-blue-300 shrink-0" />
-                      <span className="text-sm text-gray-600">{log.date}</span>
-                    </div>
-                  ))}
+                <div className="divide-y divide-gray-50">
+                  {recentLogs.map((log, i) => {
+                    const d = localMidnight(log.date)
+                    const weekday = ['日','一','二','三','四','五','六'][d.getDay()]
+                    return (
+                      <div key={i} className="flex items-center justify-between py-2.5">
+                        <span className="text-sm text-gray-700">{log.date}</span>
+                        <span className="text-xs text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full">週{weekday}</span>
+                      </div>
+                    )
+                  })}
                 </div>
               )}
             </div>
 
             {/* 設備 & 帳號 */}
-            {(store.wifi_ssid || store.cctv_account || store.pos_account) && (
+            {store.wifi_ssid && (
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
                 <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">設備 & 帳號</h2>
-                <div className="space-y-3">
-                  {store.wifi_ssid && (
-                    <div className="rounded-xl bg-gray-50 p-3.5">
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Wi-Fi</p>
-                      <p className="text-sm font-semibold text-gray-800">{store.wifi_ssid}</p>
-                      {store.wifi_password && <p className="text-xs text-gray-400 mt-1">密碼：{store.wifi_password}</p>}
-                    </div>
-                  )}
-                  {store.cctv_account && (
-                    <div className="rounded-xl bg-gray-50 p-3.5">
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">監控</p>
-                      <p className="text-sm font-semibold text-gray-800">{store.cctv_account}</p>
-                      {store.cctv_password && <p className="text-xs text-gray-400 mt-1">密碼：{store.cctv_password}</p>}
-                    </div>
-                  )}
-                  {store.pos_account && (
-                    <div className="rounded-xl bg-gray-50 p-3.5">
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">POS</p>
-                      <p className="text-sm font-semibold text-gray-800">{store.pos_account}</p>
-                      {store.pos_password && <p className="text-xs text-gray-400 mt-1">密碼：{store.pos_password}</p>}
-                    </div>
-                  )}
+                <div className="rounded-xl bg-gray-50 p-3.5">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Wi-Fi</p>
+                  <p className="text-sm font-semibold text-gray-800">{store.wifi_ssid}</p>
+                  {store.wifi_password && <p className="text-xs text-gray-400 mt-1">密碼：{store.wifi_password}</p>}
                 </div>
               </div>
             )}
@@ -525,31 +450,6 @@ export default function OverviewPage() {
               </div>
             </div>
 
-            {/* 人員 section */}
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">人員</p>
-            <div className="space-y-4 mb-6">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className={labelCls}>負責人姓名</label>
-                  <input className={inputCls} value={form.owner_name ?? ''} onChange={e => setForm(f => ({ ...f, owner_name: e.target.value }))} />
-                </div>
-                <div>
-                  <label className={labelCls}>負責人電話</label>
-                  <input className={inputCls} value={form.owner_phone ?? ''} onChange={e => setForm(f => ({ ...f, owner_phone: e.target.value }))} />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className={labelCls}>房東姓名</label>
-                  <input className={inputCls} value={form.landlord_name ?? ''} onChange={e => setForm(f => ({ ...f, landlord_name: e.target.value }))} />
-                </div>
-                <div>
-                  <label className={labelCls}>房東電話</label>
-                  <input className={inputCls} value={form.landlord_phone ?? ''} onChange={e => setForm(f => ({ ...f, landlord_phone: e.target.value }))} />
-                </div>
-              </div>
-            </div>
-
             {/* 設備帳號 section */}
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">設備帳號</p>
             <div className="space-y-4 mb-6">
@@ -561,26 +461,6 @@ export default function OverviewPage() {
                 <div>
                   <label className={labelCls}>Wi-Fi 密碼</label>
                   <input className={inputCls} value={form.wifi_password ?? ''} onChange={e => setForm(f => ({ ...f, wifi_password: e.target.value }))} />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className={labelCls}>監控帳號</label>
-                  <input className={inputCls} value={form.cctv_account ?? ''} onChange={e => setForm(f => ({ ...f, cctv_account: e.target.value }))} />
-                </div>
-                <div>
-                  <label className={labelCls}>監控密碼</label>
-                  <input className={inputCls} value={form.cctv_password ?? ''} onChange={e => setForm(f => ({ ...f, cctv_password: e.target.value }))} />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className={labelCls}>POS 帳號</label>
-                  <input className={inputCls} value={form.pos_account ?? ''} onChange={e => setForm(f => ({ ...f, pos_account: e.target.value }))} />
-                </div>
-                <div>
-                  <label className={labelCls}>POS 密碼</label>
-                  <input className={inputCls} value={form.pos_password ?? ''} onChange={e => setForm(f => ({ ...f, pos_password: e.target.value }))} />
                 </div>
               </div>
             </div>

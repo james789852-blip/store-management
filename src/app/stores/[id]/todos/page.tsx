@@ -215,12 +215,12 @@ export default function TodosPage() {
 
   return (
     <div className="bg-gray-50 min-h-screen">
-      <div className="max-w-4xl mx-auto p-8">
+      <div className="max-w-4xl mx-auto p-4 sm:p-8">
 
         {/* Header */}
-        <div className="flex items-start justify-between mb-6">
-          <div className="flex-1 mr-6">
-            <h1 className="text-2xl font-bold text-gray-900 mb-3">待辦事項</h1>
+        <div className="flex flex-wrap items-start justify-between gap-3 mb-5 sm:mb-6">
+          <div className="flex-1 min-w-0 mr-2 sm:mr-6">
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3">待辦事項</h1>
             {/* Progress bar */}
             <div className="flex items-center gap-3">
               <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
@@ -363,7 +363,7 @@ export default function TodosPage() {
                         </div>
 
                         {/* Actions (hover) */}
-                        <div className="opacity-0 group-hover:opacity-100 flex gap-1 transition-opacity flex-shrink-0">
+                        <div className="flex gap-1 transition-opacity flex-shrink-0">
                           <button
                             onClick={e => { e.stopPropagation(); startEdit(todo) }}
                             className="text-xs text-blue-500 hover:text-blue-700 px-2 py-1">
@@ -386,13 +386,13 @@ export default function TodosPage() {
 
         {/* Add / Edit Modal */}
         {showModal && (
-          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl w-full max-w-md shadow-xl">
-              <div className="px-6 pt-6 pb-4 border-b border-gray-100">
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 sm:p-4">
+            <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md shadow-xl">
+              <div className="px-5 sm:px-6 pt-5 sm:pt-6 pb-4 border-b border-gray-100">
                 <h2 className="font-bold text-gray-900 text-lg">{editId ? '編輯待辦' : '新增待辦'}</h2>
               </div>
 
-              <div className="px-6 py-5 space-y-4">
+              <div className="px-5 sm:px-6 py-5 space-y-4">
                 <div>
                   <label className={labelCls}>事項名稱 *</label>
                   <input
@@ -401,7 +401,6 @@ export default function TodosPage() {
                     placeholder="例：申請消防安全設備許可"
                     value={form.title}
                     onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) save() }}
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
@@ -451,7 +450,7 @@ export default function TodosPage() {
                 </div>
               </div>
 
-              <div className="px-6 pb-6 pt-2 flex gap-2">
+              <div className="px-5 sm:px-6 pb-6 pt-2 flex gap-2">
                 <button
                   onClick={closeModal}
                   className="flex-1 border border-gray-200 text-gray-600 py-2.5 rounded-xl text-sm hover:bg-gray-50 transition-colors">

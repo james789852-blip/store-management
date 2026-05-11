@@ -54,11 +54,17 @@
 }
 
 /* ── Base ────────────────────────────────────────────────────── */
+html {
+  overflow-x: hidden;
+}
+
 body {
   background-color: var(--surface-soft);
   color: var(--ink);
   font-family: var(--font-geist), system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* ── Scrollbar styling ───────────────────────────────────────── */

@@ -8,6 +8,31 @@ const adminSupabase = createClient(
   { auth: { autoRefreshToken: false, persistSession: false } }
 )
 
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ userId: string }> }
+) {
+  const { userId } = await params
+
+  const supabase = await createSupabaseServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: '未登入' }, { status: 401 })
+
+  const { data: callerProfile } = await supabase
+    .from('user_profiles').select('role').eq('id', user.id).single()
+  if (callerProfile?.role !== 'super_admin')
+    return NextResponse.json({ error: '無權限' }, { status: 403 })
+
+  const { password } = await request.json()
+  if (!password || password.length < 6)
+    return NextResponse.json({ error: '密碼至少 6 個字元' }, { status: 400 })
+
+  const { error } = await adminSupabase.auth.admin.updateUserById(userId, { password })
+  if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+
+  return NextResponse.json({ ok: true })
+}
+
 export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ userId: string }> }

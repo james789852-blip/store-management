@@ -89,10 +89,10 @@ export default function BudgetPage() {
   })
 
   return (
-    <div className="bg-gray-50 min-h-full p-8">
+    <div className="bg-gray-50 min-h-full p-4 sm:p-8">
       <div className="max-w-4xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">預算規劃</h1>
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-5 sm:mb-6">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">預算規劃</h1>
           <div className="flex gap-1 bg-white rounded-xl border border-gray-200 p-1">
             {(['overview', 'investor'] as const).map(t => (
               <button key={t} onClick={() => setTab(t)}
@@ -107,7 +107,7 @@ export default function BudgetPage() {
           <>
             <div className="bg-white rounded-2xl border border-gray-200 p-5 mb-6">
               <h2 className="font-semibold text-gray-900 mb-4">預算計算設定</h2>
-              <div className="grid grid-cols-3 gap-4 mb-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-4">
                 <div>
                   <label className="text-sm font-medium text-gray-700">坪數</label>
                   <input type="number" className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -126,7 +126,7 @@ export default function BudgetPage() {
                 </div>
               </div>
               {sqft > 0 && (
-                <div className="grid grid-cols-3 gap-3 mb-4 p-3 bg-gray-50 rounded-xl text-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 mb-4 p-3 bg-gray-50 rounded-xl text-sm">
                   <div><span className="text-gray-400">總預算：</span><span className="font-semibold text-gray-900">NT$ {totalBudget.toLocaleString()}</span></div>
                   <div><span className="text-gray-400">總估值：</span><span className="font-semibold text-gray-900">NT$ {Math.round(totalValuation).toLocaleString()}</span></div>
                   <div><span className="text-gray-400">1% 價值：</span><span className="font-semibold text-gray-900">NT$ {Math.round(onePercent).toLocaleString()}</span></div>
@@ -147,7 +147,7 @@ export default function BudgetPage() {
               ].map(card => (
                 <div key={card.label} className="bg-white rounded-2xl border border-gray-200 p-4">
                   <p className="text-xs text-gray-400 mb-1">{card.label}</p>
-                  <p className={`text-lg font-bold ${card.color}`}>NT$ {card.value.toLocaleString()}</p>
+                  <p className={`text-sm sm:text-base font-bold ${card.color} truncate`}>NT$ {card.value.toLocaleString()}</p>
                 </div>
               ))}
             </div>

@@ -29,6 +29,12 @@ function lineUrl(lineId: string) {
   return `https://line.me/ti/p/~${encodeURIComponent(lineId)}`
 }
 
+// 判斷是電話號碼還是 LINE ID（純數字 8~15 碼視為電話）
+function isLinePhone(s: string): boolean {
+  const cleaned = s.replace(/[\s\-\(\)\+\.]/g, '')
+  return /^\d{8,15}$/.test(cleaned)
+}
+
 type VendorForm = {
   name: string
   category: string
@@ -260,11 +266,11 @@ export default function VendorsPage() {
 
   return (
     <div className="bg-gray-50 min-h-screen">
-      <div className="max-w-5xl mx-auto p-8">
+      <div className="max-w-5xl mx-auto p-4 sm:p-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-5 sm:mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">廠商資料</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">廠商資料</h1>
             <p className="text-sm text-gray-400 mt-0.5">共 {vendors.length} 間廠商</p>
           </div>
           <div className="flex gap-2">
@@ -347,36 +353,52 @@ export default function VendorsPage() {
 
                   {/* Quick actions */}
                   {(v.phone || v.mobile || v.line_id || v.can_invoice) && (
-                    <div className="flex items-center gap-1.5 mt-auto pt-3 border-t border-gray-50"
+                    <div className="flex flex-wrap items-center gap-1.5 mt-auto pt-3 border-t border-gray-50"
                       onClick={e => e.stopPropagation()}
                     >
-                      {(v.phone || v.mobile) && (
-                        <a
-                          href={`tel:${v.phone || v.mobile}`}
-                          className="flex items-center gap-1 text-xs text-gray-500 bg-gray-100 hover:bg-gray-200 px-2.5 py-1 rounded-full transition-colors"
-                        >
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      {v.phone && (
+                        <a href={`tel:${v.phone}`} title={v.phone}
+                          className="flex items-center gap-1 text-xs text-gray-600 bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded-lg transition-colors font-medium">
+                          <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                           </svg>
-                          {v.phone || v.mobile}
+                          電話
+                        </a>
+                      )}
+                      {v.mobile && (
+                        <a href={`tel:${v.mobile}`} title={v.mobile}
+                          className="flex items-center gap-1 text-xs text-blue-600 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded-lg transition-colors font-medium">
+                          <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                          </svg>
+                          手機
                         </a>
                       )}
                       {v.line_id && (
-                        <a
-                          href={lineUrl(v.line_id)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1 text-xs text-white bg-green-500 hover:bg-green-600 px-2.5 py-1 rounded-full transition-colors"
-                        >
-                          <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M19.365 9.89c.50 0 .906.41.906.91s-.406.91-.906.91H17.71v1.11h1.655c.5 0 .906.41.906.91s-.406.91-.906.91H16.8c-.5 0-.906-.41-.906-.91V9.89c0-.5.406-.91.906-.91h2.565zm-5.584 0c.5 0 .906.41.906.91v3.85c0 .5-.406.91-.906.91s-.906-.41-.906-.91V9.89c0-.5.406-.91.906-.91zm-2.184.91v2.94l-1.946-3.51c-.16-.29-.464-.34-.72-.25a.91.91 0 00-.546.83v3.85c0 .5.406.91.906.91s.906-.41.906-.91v-2.94l1.946 3.51c.16.29.464.34.72.25a.91.91 0 00.546-.83V9.89c0-.5-.406-.91-.906-.91s-.906.41-.906.91zM6.56 9.89c-.5 0-.906.41-.906.91s.406.91.906.91H8.21v1.11H6.56c-.5 0-.906.41-.906.91s.406.91.906.91h2.564c.5 0 .906-.41.906-.91V9.89c0-.5-.406-.91-.906-.91H6.56z"/>
-                            <path d="M12 2C6.486 2 2 5.822 2 10.5c0 2.967 1.762 5.582 4.434 7.15L5.5 22l4.766-2.496A11.34 11.34 0 0012 19c5.514 0 10-3.822 10-8.5S17.514 2 12 2z"/>
-                          </svg>
-                          LINE
-                        </a>
+                        isLinePhone(v.line_id) ? (
+                          <button
+                            onClick={e => { e.preventDefault(); e.stopPropagation(); copyPhone(v.line_id!) }}
+                            className={`flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-colors font-medium ${
+                              copied === v.line_id ? 'bg-green-100 text-green-700' : 'text-white bg-green-500 hover:bg-green-600'
+                            }`}>
+                            <svg className="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M12 2C6.486 2 2 5.822 2 10.5c0 2.967 1.762 5.582 4.434 7.15L5.5 22l4.766-2.496A11.34 11.34 0 0012 19c5.514 0 10-3.822 10-8.5S17.514 2 12 2z"/>
+                            </svg>
+                            {copied === v.line_id ? '✓ 複製' : 'LINE'}
+                          </button>
+                        ) : (
+                          <a href={lineUrl(v.line_id)} target="_blank" rel="noopener noreferrer"
+                            onClick={e => e.stopPropagation()}
+                            className="flex items-center gap-1 text-xs text-white bg-green-500 hover:bg-green-600 px-2 py-1 rounded-lg transition-colors font-medium">
+                            <svg className="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M12 2C6.486 2 2 5.822 2 10.5c0 2.967 1.762 5.582 4.434 7.15L5.5 22l4.766-2.496A11.34 11.34 0 0012 19c5.514 0 10-3.822 10-8.5S17.514 2 12 2z"/>
+                            </svg>
+                            LINE
+                          </a>
+                        )
                       )}
                       {v.can_invoice && (
-                        <span className="text-xs bg-green-50 text-green-600 px-2 py-0.5 rounded-full font-medium">可發票</span>
+                        <span className="text-xs bg-emerald-50 text-emerald-600 px-2 py-1 rounded-lg font-medium">可發票</span>
                       )}
                     </div>
                   )}
@@ -390,12 +412,12 @@ export default function VendorsPage() {
       {/* Detail Modal */}
       {detailVendor && (
         <div
-          className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 sm:p-4"
           onClick={e => { if (e.target === e.currentTarget) setDetailVendor(null) }}
         >
-          <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl overflow-hidden">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg shadow-xl overflow-hidden">
             {/* Modal header */}
-            <div className="flex items-start justify-between p-6 border-b border-gray-100">
+            <div className="flex items-start justify-between p-5 sm:p-6 border-b border-gray-100">
               <div className="flex items-center gap-3">
                 <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-lg font-bold shrink-0 ${avatarColor(detailVendor.category).bg} ${avatarColor(detailVendor.category).text}`}>
                   {detailVendor.name.charAt(0)}
@@ -411,27 +433,59 @@ export default function VendorsPage() {
               </div>
               <div className="flex items-center gap-2">
                 {detailVendor.line_id && (
-                  <a
-                    href={lineUrl(detailVendor.line_id)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 text-sm bg-green-500 text-white px-3 py-1.5 rounded-lg hover:bg-green-600 transition-colors"
-                  >
-                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M12 2C6.486 2 2 5.822 2 10.5c0 2.967 1.762 5.582 4.434 7.15L5.5 22l4.766-2.496A11.34 11.34 0 0012 19c5.514 0 10-3.822 10-8.5S17.514 2 12 2z"/>
-                    </svg>
-                    LINE
-                  </a>
+                  isLinePhone(detailVendor.line_id) ? (
+                    <div className="flex flex-col items-start gap-1">
+                      <button
+                        onClick={() => copyPhone(detailVendor.line_id!)}
+                        className={`flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg transition-colors font-medium ${
+                          copied === detailVendor.line_id
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-green-500 text-white hover:bg-green-600'
+                        }`}
+                      >
+                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M12 2C6.486 2 2 5.822 2 10.5c0 2.967 1.762 5.582 4.434 7.15L5.5 22l4.766-2.496A11.34 11.34 0 0012 19c5.514 0 10-3.822 10-8.5S17.514 2 12 2z"/>
+                        </svg>
+                        {copied === detailVendor.line_id ? '✓ 已複製' : '複製 LINE 號碼'}
+                      </button>
+                      {copied === detailVendor.line_id && (
+                        <p className="text-[11px] text-green-600 font-medium">請到 LINE → 加朋友 → 搜尋電話號碼</p>
+                      )}
+                    </div>
+                  ) : (
+                    <a
+                      href={lineUrl(detailVendor.line_id)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 text-sm bg-green-500 text-white px-3 py-1.5 rounded-lg hover:bg-green-600 transition-colors"
+                    >
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2C6.486 2 2 5.822 2 10.5c0 2.967 1.762 5.582 4.434 7.15L5.5 22l4.766-2.496A11.34 11.34 0 0012 19c5.514 0 10-3.822 10-8.5S17.514 2 12 2z"/>
+                      </svg>
+                      LINE 加好友
+                    </a>
+                  )
                 )}
-                {(detailVendor.phone || detailVendor.mobile) && (
+                {detailVendor.phone && (
                   <a
-                    href={`tel:${detailVendor.phone || detailVendor.mobile}`}
-                    className="flex items-center gap-1.5 text-sm bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors"
+                    href={`tel:${detailVendor.phone}`}
+                    className="flex items-center gap-1.5 text-sm bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-200 transition-colors"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                     </svg>
-                    撥打
+                    {detailVendor.phone}
+                  </a>
+                )}
+                {detailVendor.mobile && (
+                  <a
+                    href={`tel:${detailVendor.mobile}`}
+                    className="flex items-center gap-1.5 text-sm bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                    </svg>
+                    {detailVendor.mobile}
                   </a>
                 )}
                 <button
@@ -480,7 +534,12 @@ export default function VendorsPage() {
                     />
                   )}
                   {detailVendor.email && <DetailRow label="Email" value={detailVendor.email} />}
-                  {detailVendor.line_id && <DetailRow label="LINE ID" value={detailVendor.line_id} />}
+                  {detailVendor.line_id && (
+                    <DetailRow
+                      label={isLinePhone(detailVendor.line_id) ? 'LINE 電話' : 'LINE ID'}
+                      value={detailVendor.line_id}
+                    />
+                  )}
                   {detailVendor.address && <DetailRow label="地址" value={detailVendor.address} />}
                   {detailVendor.tax_id && <DetailRow label="統一編號" value={detailVendor.tax_id} />}
                 </dl>
@@ -522,16 +581,16 @@ export default function VendorsPage() {
       {/* Add / Edit Modal */}
       {showForm && (
         <div
-          className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 sm:p-4"
           onClick={e => { if (e.target === e.currentTarget) closeForm() }}
         >
-          <div className="bg-white rounded-2xl w-full max-w-2xl shadow-xl overflow-hidden">
-            <div className="flex items-center justify-between p-6 border-b border-gray-100">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-2xl shadow-xl overflow-hidden">
+            <div className="flex items-center justify-between p-5 sm:p-6 border-b border-gray-100">
               <h2 className="font-bold text-gray-900 text-lg">{editId ? '編輯廠商' : '新增廠商'}</h2>
               <button onClick={closeForm} className="text-gray-400 hover:text-gray-600 text-lg leading-none">✕</button>
             </div>
 
-            <div className="p-6 space-y-6 max-h-[75vh] overflow-y-auto">
+            <div className="p-5 sm:p-6 space-y-5 sm:space-y-6 max-h-[80vh] overflow-y-auto">
               {/* Section 1: 基本資訊 */}
               <div>
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">基本資訊</p>
@@ -590,8 +649,14 @@ export default function VendorsPage() {
                     <input className={inputCls} type="email" value={form.email} onChange={e => setField('email', e.target.value)} />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">LINE ID</label>
-                    <input className={inputCls} value={form.line_id} onChange={e => setField('line_id', e.target.value)} />
+                    <label className="block text-sm font-medium text-gray-700 mb-1">LINE ID / 電話號碼</label>
+                    <input
+                      className={inputCls}
+                      value={form.line_id}
+                      onChange={e => setField('line_id', e.target.value)}
+                      placeholder="輸入 LINE ID 或手機號碼"
+                    />
+                    <p className="text-[11px] text-gray-400 mt-1">輸入 LINE ID 可直接開啟加好友；輸入電話號碼則提供複製功能</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">統一編號</label>

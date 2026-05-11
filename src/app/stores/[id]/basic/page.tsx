@@ -7,16 +7,16 @@ import type { Store } from '@/types'
 
 type FormData = Partial<Omit<Store, 'id' | 'created_at' | 'updated_at'>>
 
-type StoreStaff = {
+interface StoreContact {
   id: string
-  store_id: string
-  role: string
   name: string
   phone: string | null
+  line_id: string | null
   sort_order: number
 }
 
-type StaffDraft = { role: string; name: string; phone: string }
+type ContactDraft = { name: string; phone: string; line_id: string }
+const EMPTY_CONTACT: ContactDraft = { name: '', phone: '', line_id: '' }
 
 const FIELD_GROUPS = {
   basic: [
@@ -37,12 +37,14 @@ const FIELD_GROUPS = {
   accounts: [
     { key: 'wifi_ssid', label: 'Wi-Fi SSID' },
     { key: 'wifi_password', label: 'Wi-Fi 密碼', secret: true },
-    { key: 'cctv_account', label: '監視器帳號' },
+    { key: 'cctv_ip', label: '監視器 IP / 域名' },
+    { key: 'cctv_port', label: '監視器 HTTP 埠' },
+    { key: 'cctv_nickname', label: '監視器設備暱稱' },
+    { key: 'cctv_account', label: '監視器使用者名稱' },
     { key: 'cctv_password', label: '監視器密碼', secret: true },
     { key: 'cctv_brand', label: '監視器品牌' },
     { key: 'pos_account', label: 'POS 帳號' },
     { key: 'pos_password', label: 'POS 密碼', secret: true },
-    { key: 'pos_model', label: 'POS / 收銀機型號' },
   ],
   contacts: [
     { key: 'owner_name', label: '負責人姓名' },
@@ -53,8 +55,6 @@ const FIELD_GROUPS = {
   ],
 }
 
-const EMPTY_DRAFT: StaffDraft = { role: '', name: '', phone: '' }
-
 export default function BasicPage() {
   const { id } = useParams<{ id: string }>()
   const [store, setStore] = useState<Store | null>(null)
@@ -64,30 +64,23 @@ export default function BasicPage() {
   const [revealed, setRevealed] = useState<Record<string, boolean>>({})
   const [activeTab, setActiveTab] = useState<'basic' | 'accounts' | 'contacts'>('basic')
 
-  // staff state
-  const [staff, setStaff] = useState<StoreStaff[]>([])
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [editDraft, setEditDraft] = useState<StaffDraft>(EMPTY_DRAFT)
+  // contacts state
+  const [contacts, setContacts] = useState<StoreContact[]>([])
+  const [editingContactId, setEditingContactId] = useState<string | null>(null)
+  const [editDraft, setEditDraft] = useState<ContactDraft>(EMPTY_CONTACT)
   const [adding, setAdding] = useState(false)
-  const [addDraft, setAddDraft] = useState<StaffDraft>(EMPTY_DRAFT)
-  const [staffSaving, setStaffSaving] = useState(false)
+  const [addDraft, setAddDraft] = useState<ContactDraft>(EMPTY_CONTACT)
+  const [contactSaving, setContactSaving] = useState(false)
 
   useEffect(() => { load() }, [id]) // eslint-disable-line
 
   async function load() {
-    const { data } = await supabase.from('stores').select('*').eq('id', id).single()
-    if (data) { setStore(data); setForm(data) }
-    loadStaff()
-  }
-
-  async function loadStaff() {
-    const { data } = await supabase
-      .from('store_staff')
-      .select('*')
-      .eq('store_id', id)
-      .order('sort_order')
-      .order('created_at')
-    setStaff(data ?? [])
+    const [{ data: storeData }, { data: contactsData }] = await Promise.all([
+      supabase.from('stores').select('*').eq('id', id).single(),
+      supabase.from('store_contacts').select('id, name, phone, line_id, sort_order').eq('store_id', id).order('sort_order'),
+    ])
+    if (storeData) { setStore(storeData); setForm(storeData) }
+    setContacts((contactsData || []) as StoreContact[])
   }
 
   async function save() {
@@ -108,43 +101,43 @@ export default function BasicPage() {
     setForm(f => ({ ...f, [key]: value === '' ? null : value }))
   }
 
-  function startEdit(s: StoreStaff) {
-    setEditingId(s.id)
-    setEditDraft({ role: s.role, name: s.name, phone: s.phone ?? '' })
+  // ── contacts CRUD ──────────────────────────────────────────────────────────
+
+  function startEdit(c: StoreContact) {
+    setEditingContactId(c.id)
+    setEditDraft({ name: c.name, phone: c.phone ?? '', line_id: c.line_id ?? '' })
   }
 
   async function saveEdit() {
-    if (!editingId || !editDraft.name) return
-    setStaffSaving(true)
-    await supabase.from('store_staff').update({
-      role: editDraft.role,
-      name: editDraft.name,
-      phone: editDraft.phone || null,
-    }).eq('id', editingId)
-    setStaffSaving(false)
-    setEditingId(null)
-    loadStaff()
+    if (!editingContactId || !editDraft.name.trim()) return
+    setContactSaving(true)
+    await supabase.from('store_contacts')
+      .update({ name: editDraft.name, phone: editDraft.phone || null, line_id: editDraft.line_id || null })
+      .eq('id', editingContactId)
+    setContactSaving(false)
+    setEditingContactId(null)
+    load()
   }
 
-  async function deleteStaff(staffId: string) {
-    await supabase.from('store_staff').delete().eq('id', staffId)
-    loadStaff()
+  async function deleteContact(contactId: string) {
+    if (!confirm('確定要刪除這位聯絡人？')) return
+    await supabase.from('store_contacts').delete().eq('id', contactId)
+    setContacts(prev => prev.filter(c => c.id !== contactId))
   }
 
-  async function addStaff() {
-    if (!addDraft.name) return
-    setStaffSaving(true)
-    await supabase.from('store_staff').insert({
-      store_id: id,
-      role: addDraft.role,
-      name: addDraft.name,
-      phone: addDraft.phone || null,
-      sort_order: staff.length,
-    })
-    setStaffSaving(false)
+  async function addContact() {
+    if (!addDraft.name.trim()) return
+    setContactSaving(true)
+    const { data, error } = await supabase
+      .from('store_contacts')
+      .insert({ store_id: id, name: addDraft.name, phone: addDraft.phone || null, line_id: addDraft.line_id || null, sort_order: contacts.length })
+      .select()
+      .single()
+    setContactSaving(false)
+    if (error || !data) { alert('新增失敗：' + (error?.message ?? '請再試一次')); return }
+    setContacts(prev => [...prev, data as StoreContact])
     setAdding(false)
-    setAddDraft(EMPTY_DRAFT)
-    loadStaff()
+    setAddDraft(EMPTY_CONTACT)
   }
 
   const TABS = [
@@ -155,12 +148,14 @@ export default function BasicPage() {
 
   const fields = FIELD_GROUPS[activeTab]
 
+  const inputCls = 'w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
+
   return (
-    <div className="bg-gray-50 min-h-full p-8">
+    <div className="bg-gray-50 min-h-full p-4 sm:p-8">
       <div className="max-w-3xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-5 sm:mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">基本資料</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">基本資料</h1>
             <p className="text-sm text-gray-400 mt-0.5">{store?.name}</p>
           </div>
           <button
@@ -227,133 +222,96 @@ export default function BasicPage() {
             })}
           </div>
 
-          {/* Staff section — only shown on basic tab */}
-          {activeTab === 'basic' && (
-            <div className="mt-6 pt-6 border-t border-gray-100">
+          {/* 其他聯絡人（contacts tab 限定） */}
+          {activeTab === 'contacts' && (
+            <div className="mt-6 pt-5 border-t border-gray-100">
               <div className="flex items-center justify-between mb-3">
-                <span className="text-sm font-medium text-gray-700">店內人員</span>
-                <button
-                  onClick={() => { setAdding(true); setAddDraft(EMPTY_DRAFT) }}
-                  className="text-xs px-3 py-1 border border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-blue-400 hover:text-blue-600 transition-colors"
-                >
-                  + 新增人員
-                </button>
+                <h3 className="text-sm font-semibold text-gray-700">其他聯絡人</h3>
+                {!adding && (
+                  <button
+                    onClick={() => { setAdding(true); setAddDraft(EMPTY_CONTACT) }}
+                    className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                  >
+                    ＋ 新增
+                  </button>
+                )}
               </div>
 
               <div className="space-y-2">
-                {staff.map(s => (
-                  <div key={s.id} className="rounded-xl border border-gray-200 px-4 py-3">
-                    {editingId === s.id ? (
-                      <div className="flex flex-col sm:flex-row gap-2">
-                        <input
-                          placeholder="職稱（如：店長）"
-                          className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          value={editDraft.role}
-                          onChange={e => setEditDraft(d => ({ ...d, role: e.target.value }))}
-                        />
-                        <input
-                          placeholder="姓名*"
-                          className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          value={editDraft.name}
-                          onChange={e => setEditDraft(d => ({ ...d, name: e.target.value }))}
-                        />
-                        <input
-                          placeholder="電話"
-                          className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          value={editDraft.phone}
-                          onChange={e => setEditDraft(d => ({ ...d, phone: e.target.value }))}
-                        />
-                        <div className="flex gap-1.5 shrink-0">
-                          <button
-                            onClick={saveEdit}
-                            disabled={staffSaving || !editDraft.name}
-                            className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                          >
-                            儲存
-                          </button>
-                          <button
-                            onClick={() => setEditingId(null)}
-                            className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-500 hover:text-gray-800 transition-colors"
-                          >
-                            取消
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-3">
-                        <div className="flex-1 flex items-center gap-3 min-w-0">
-                          {s.role && (
-                            <span className="shrink-0 text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded-md">
-                              {s.role}
-                            </span>
-                          )}
-                          <span className="text-sm font-medium text-gray-900 truncate">{s.name}</span>
-                          {s.phone && (
-                            <span className="text-sm text-gray-500 truncate">{s.phone}</span>
-                          )}
-                        </div>
-                        <div className="flex gap-1.5 shrink-0">
-                          <button
-                            onClick={() => startEdit(s)}
-                            className="text-xs px-2.5 py-1 border border-gray-200 rounded-lg text-gray-500 hover:border-blue-300 hover:text-blue-600 transition-colors"
-                          >
-                            編輯
-                          </button>
-                          <button
-                            onClick={() => deleteStaff(s.id)}
-                            className="text-xs px-2.5 py-1 border border-gray-200 rounded-lg text-gray-400 hover:border-red-300 hover:text-red-500 transition-colors"
-                          >
-                            刪除
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-
-                {adding && (
-                  <div className="rounded-xl border border-blue-200 bg-blue-50/40 px-4 py-3">
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <input
-                        placeholder="職稱（如：店長）"
-                        className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                        value={addDraft.role}
-                        onChange={e => setAddDraft(d => ({ ...d, role: e.target.value }))}
-                        autoFocus
-                      />
-                      <input
-                        placeholder="姓名*"
-                        className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                        value={addDraft.name}
-                        onChange={e => setAddDraft(d => ({ ...d, name: e.target.value }))}
-                      />
-                      <input
-                        placeholder="電話"
-                        className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                        value={addDraft.phone}
-                        onChange={e => setAddDraft(d => ({ ...d, phone: e.target.value }))}
-                      />
-                      <div className="flex gap-1.5 shrink-0">
-                        <button
-                          onClick={addStaff}
-                          disabled={staffSaving || !addDraft.name}
-                          className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                        >
-                          新增
-                        </button>
-                        <button
-                          onClick={() => { setAdding(false); setAddDraft(EMPTY_DRAFT) }}
-                          className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-500 hover:text-gray-800 transition-colors bg-white"
-                        >
+                {contacts.map(contact =>
+                  editingContactId === contact.id ? (
+                    <div key={contact.id} className="border border-blue-200 rounded-xl p-3 space-y-2 bg-blue-50/40">
+                      <input className={inputCls} placeholder="姓名 *" autoFocus
+                        value={editDraft.name} onChange={e => setEditDraft(d => ({ ...d, name: e.target.value }))} />
+                      <input className={inputCls} placeholder="電話"
+                        value={editDraft.phone} onChange={e => setEditDraft(d => ({ ...d, phone: e.target.value }))} />
+                      <input className={inputCls} placeholder="LINE ID / 電話"
+                        value={editDraft.line_id} onChange={e => setEditDraft(d => ({ ...d, line_id: e.target.value }))} />
+                      <div className="flex gap-2 pt-1">
+                        <button onClick={() => setEditingContactId(null)}
+                          className="flex-1 border border-gray-200 text-gray-600 py-1.5 rounded-lg text-xs hover:bg-gray-50 transition-colors">
                           取消
+                        </button>
+                        <button onClick={saveEdit} disabled={contactSaving || !editDraft.name.trim()}
+                          className="flex-1 bg-blue-600 text-white py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50 transition-colors">
+                          {contactSaving ? '儲存中...' : '儲存'}
                         </button>
                       </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div key={contact.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl group">
+                      <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-sm font-bold text-indigo-600 shrink-0">
+                        {contact.name[0]}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-900">{contact.name}</p>
+                        <div className="flex flex-wrap gap-x-3 mt-0.5">
+                          {contact.phone && <span className="text-xs text-gray-500">📞 {contact.phone}</span>}
+                          {contact.line_id && <span className="text-xs text-green-600">LINE {contact.line_id}</span>}
+                        </div>
+                      </div>
+                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                        <button onClick={() => startEdit(contact)}
+                          className="p-1.5 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-white transition-colors">
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                          </svg>
+                        </button>
+                        <button onClick={() => deleteContact(contact.id)}
+                          className="p-1.5 text-gray-400 hover:text-red-500 rounded-lg hover:bg-white transition-colors">
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  )
                 )}
 
-                {staff.length === 0 && !adding && (
-                  <p className="text-sm text-gray-400 py-2">尚無人員，點擊「新增人員」開始建立</p>
+                {contacts.length === 0 && !adding && (
+                  <p className="text-sm text-gray-400 text-center py-4">尚無其他聯絡人</p>
+                )}
+
+                {/* 新增表單 */}
+                {adding && (
+                  <div className="border border-dashed border-blue-300 rounded-xl p-3 space-y-2 bg-blue-50/30">
+                    <input className={inputCls} placeholder="姓名 *" autoFocus
+                      value={addDraft.name} onChange={e => setAddDraft(d => ({ ...d, name: e.target.value }))} />
+                    <input className={inputCls} placeholder="電話"
+                      value={addDraft.phone} onChange={e => setAddDraft(d => ({ ...d, phone: e.target.value }))} />
+                    <input className={inputCls} placeholder="LINE ID / 電話"
+                      value={addDraft.line_id} onChange={e => setAddDraft(d => ({ ...d, line_id: e.target.value }))} />
+                    <div className="flex gap-2 pt-1">
+                      <button onClick={() => { setAdding(false); setAddDraft(EMPTY_CONTACT) }}
+                        className="flex-1 border border-gray-200 text-gray-600 py-1.5 rounded-lg text-xs hover:bg-gray-50 transition-colors">
+                        取消
+                      </button>
+                      <button onClick={addContact} disabled={contactSaving || !addDraft.name.trim()}
+                        className="flex-1 bg-blue-600 text-white py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50 transition-colors">
+                        {contactSaving ? '新增中...' : '新增'}
+                      </button>
+                    </div>
+                  </div>
                 )}
               </div>
             </div>

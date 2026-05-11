@@ -10,6 +10,7 @@ type Profile = {
   id: string
   role: Role
   display_name: string | null
+  title: string | null
 }
 
 type AuthContextValue = {
@@ -34,16 +35,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   async function loadProfile(u: User) {
     const { data } = await supabase
       .from('user_profiles')
-      .select('id, role, display_name')
+      .select('id, role, display_name, title')
       .eq('id', u.id)
       .single()
     setProfile(data ?? null)
   }
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user: u } }) => {
+    // getSession reads from localStorage (instant), avoids a network round-trip on every load
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      const u = session?.user ?? null
       setUser(u)
-      if (u) loadProfile(u)
+      if (u) await loadProfile(u)  // await so profile is ready before loading=false
       setLoading(false)
     })
 

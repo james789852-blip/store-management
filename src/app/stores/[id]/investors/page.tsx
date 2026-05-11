@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/contexts/AuthContext'
 import type { Investor, InvestorPayStatus } from '@/types'
 import { INVESTOR_PAY_STATUS_LABEL } from '@/types'
 import { INVESTOR_PAY_BADGE } from '@/lib/colors'
@@ -61,6 +62,7 @@ function floor2(n: number) { return Math.floor(n * 1000) / 1000 }
 // ── Main Component ────────────────────────────────────────────
 export default function InvestorsPage() {
   const { id } = useParams<{ id: string }>()
+  const { profile } = useAuth()
   const [tab, setTab] = useState<TabType>('investors')
   const [investors, setInvestors] = useState<Investor[]>([])
   const [storeData, setStoreData] = useState<{ sqft: number | null; price_per_sqft: number | null; total_valuation: number | null } | null>(null)
@@ -432,12 +434,12 @@ export default function InvestorsPage() {
   const maxForThisRound = [r1Limit, r2Limit, r3Limit, r4Limit][configuredRound - 1] ?? 0
 
   return (
-    <div className="bg-gray-50 min-h-full p-8">
+    <div className="bg-gray-50 min-h-full p-4 sm:p-8">
       <div className="max-w-4xl mx-auto">
 
         {/* ── Header ── */}
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">股東收款</h1>
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-5 sm:mb-6">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">股東收款</h1>
           <div className="flex gap-2">
             <button onClick={() => { setRcDraft(roundConfig); setShowSettings(true) }}
               className="border border-gray-200 bg-white text-gray-600 px-3 py-2 rounded-xl text-sm hover:bg-gray-50 transition-colors flex items-center gap-1.5">
@@ -456,17 +458,17 @@ export default function InvestorsPage() {
 
         {/* ── Budget info ── */}
         {totalBudget > 0 ? (
-          <div className="grid grid-cols-4 gap-3 mb-5">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-5">
             {[
-              { label: '總預算', value: fmt(totalBudget), sub: `${sqft} 坪 × ${fmt(pricePerSqft)}/坪`, color: 'text-gray-900' },
+              { label: '總預算', value: fmt(totalBudget), sub: `${sqft} 坪 × ${pricePerSqft.toLocaleString()}/坪`, color: 'text-gray-900' },
               { label: '店面總估值', value: fmt(totalValuation), sub: '= 總預算 ÷ 30%', color: 'text-indigo-700' },
               { label: '1% 股份價值', value: fmt(onePercent), sub: '= 總估值 × 1%', color: 'text-violet-700' },
               { label: '募資上限', value: `${MAX_PCT}%`, sub: fmt(totalValuation * MAX_PCT / 100), color: 'text-blue-700' },
             ].map(c => (
-              <div key={c.label} className="bg-white rounded-2xl border border-gray-200 p-4">
-                <p className="text-xs text-gray-400 mb-1">{c.label}</p>
-                <p className={`text-base font-bold ${c.color}`}>{c.value}</p>
-                <p className="text-xs text-gray-400 mt-0.5">{c.sub}</p>
+              <div key={c.label} className="bg-white rounded-2xl border border-gray-200 p-3 sm:p-4">
+                <p className="text-xs text-gray-400 mb-1 truncate">{c.label}</p>
+                <p className={`text-sm sm:text-base font-bold ${c.color} truncate`}>{c.value}</p>
+                <p className="text-[10px] sm:text-xs text-gray-400 mt-0.5 truncate">{c.sub}</p>
               </div>
             ))}
           </div>
@@ -509,16 +511,16 @@ export default function InvestorsPage() {
         )}
 
         {/* ── Summary cards ── */}
-        <div className="grid grid-cols-3 gap-3 mb-5">
+        <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-5">
           {[
             { label: '股份合計', value: `${totalPct.toFixed(3)}%`, sub: `已確認 ${uniquePaidCount} 位`, color: totalPct > MAX_PCT ? 'text-red-500' : 'text-indigo-600' },
             { label: '總籌資金額', value: fmt(totalAmount), sub: `${uniqueInvestorCount} 位股東`, color: 'text-gray-900' },
             { label: '已到位', value: fmt(paidAmount), sub: `${totalAmount > 0 ? ((paidAmount / totalAmount) * 100).toFixed(0) : 0}%`, color: 'text-teal-600' },
           ].map(c => (
-            <div key={c.label} className="bg-white rounded-2xl border border-gray-200 p-4">
-              <p className="text-xs text-gray-400 mb-1">{c.label}</p>
-              <p className={`text-lg font-bold ${c.color}`}>{c.value}</p>
-              <p className="text-xs text-gray-400 mt-0.5">{c.sub}</p>
+            <div key={c.label} className="bg-white rounded-2xl border border-gray-200 p-3 sm:p-4 overflow-hidden">
+              <p className="text-xs text-gray-400 mb-1 truncate">{c.label}</p>
+              <p className={`text-sm sm:text-base font-bold ${c.color} truncate`}>{c.value}</p>
+              <p className="text-[10px] sm:text-xs text-gray-400 mt-0.5 truncate">{c.sub}</p>
             </div>
           ))}
         </div>
@@ -577,7 +579,7 @@ export default function InvestorsPage() {
                             )}
                           </div>
                           {isOpen && (
-                            <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-500">
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5 text-xs text-gray-500">
                               <span>每人上限 <strong className={meta.text}>{limit.toFixed(3)}%</strong></span>
                               {totalValuation > 0 && <span>≈ {fmt(limit / 100 * totalValuation)}</span>}
                               <span>已用 {used.toFixed(3)}%</span>
@@ -672,7 +674,8 @@ export default function InvestorsPage() {
               onChange={handleContractFile}
             />
 
-            {/* Email sender settings */}
+            {/* Email sender settings — super_admin only */}
+            {profile?.role === 'super_admin' && (
             <div className="bg-white rounded-2xl border border-gray-200 p-5">
               <div className="flex items-center gap-3 mb-4">
                 <h2 className="font-bold text-gray-900 text-sm flex-1">合約寄送</h2>
@@ -720,6 +723,7 @@ export default function InvestorsPage() {
                 </div>
               )}
             </div>
+            )}
 
             {/* 批次設定繳款期限 & 合約日 */}
             <div className="bg-white rounded-2xl border border-gray-200 p-5">
@@ -783,7 +787,8 @@ export default function InvestorsPage() {
                   {/* Rounds 1-3 grouped */}
                   <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
                     <div className="px-4 py-2 bg-indigo-50 border-b border-indigo-100 text-xs font-semibold text-indigo-700">第一、二、三輪（合併持股）</div>
-                    <table className="w-full">
+                    <div className="overflow-x-auto">
+                    <table className="w-full min-w-[700px]">
                       <thead className="bg-gray-50">
                         <tr>{['姓名','輪次','合計持股%','合計金額','付款狀態','合約檔案','寄出','合約已寄','合約簽回'].map(h => (
                           <th key={h} className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500">{h}</th>
@@ -812,12 +817,14 @@ export default function InvestorsPage() {
                             </td>
                             <td className="px-3 py-3"><ContractCell g={g} /></td>
                             <td className="px-3 py-3">
+                              {profile?.role === 'super_admin' && (
                               <button onClick={() => sendGroup(g)}
                                 disabled={!g.email || !g.contractUrl || sendingId === g.key}
                                 title={!g.email ? '無 Email' : !g.contractUrl ? '未上傳合約' : ''}
                                 className={`text-xs px-2.5 py-1 rounded-lg font-medium transition-colors disabled:opacity-50 ${g.email && g.contractUrl ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}>
                                 {sendingId === g.key ? '寄送中' : '寄出'}
                               </button>
+                              )}
                             </td>
                             <td className="px-3 py-3">
                               <button onClick={() => quickUpdateGroup(g.ids, { contract_sent: !g.contractSent })}
@@ -836,13 +843,15 @@ export default function InvestorsPage() {
                         {groups.length === 0 && <tr><td colSpan={8} className="py-8 text-center text-sm text-gray-400">尚無第一至三輪投資人</td></tr>}
                       </tbody>
                     </table>
+                    </div>
                   </div>
 
                   {/* Round 4 individual */}
                   {round4.length > 0 && (
                     <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
                       <div className="px-4 py-2 bg-teal-50 border-b border-teal-100 text-xs font-semibold text-teal-700">第四輪（外部投資人）</div>
-                      <table className="w-full">
+                      <div className="overflow-x-auto">
+                      <table className="w-full min-w-[600px]">
                         <thead className="bg-gray-50">
                           <tr>{['姓名','持股%','金額','合約檔案','寄出','合約已寄','合約簽回','付款狀態'].map(h => (
                             <th key={h} className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500">{h}</th>
@@ -878,11 +887,13 @@ export default function InvestorsPage() {
                                 )}
                               </td>
                               <td className="px-3 py-3">
+                                {profile?.role === 'super_admin' && (
                                 <button onClick={() => sendSingle(inv)}
                                   disabled={!inv.email || !inv.contract_url || sendingId === inv.id}
                                   className={`text-xs px-2.5 py-1 rounded-lg font-medium disabled:opacity-50 transition-colors ${inv.email && inv.contract_url ? 'bg-teal-600 text-white hover:bg-teal-700' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}>
                                   {sendingId === inv.id ? '寄送中' : '寄出'}
                                 </button>
+                                )}
                               </td>
                               <td className="px-3 py-3">
                                 <button onClick={() => quickUpdate(inv.id, { contract_sent: !inv.contract_sent })}
@@ -909,6 +920,7 @@ export default function InvestorsPage() {
                           ))}
                         </tbody>
                       </table>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -920,8 +932,8 @@ export default function InvestorsPage() {
 
       {/* ── Round config modal ── */}
       {showSettings && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 sm:p-4">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-sm shadow-2xl">
             <div className="px-6 py-5 border-b border-gray-100">
               <h2 className="font-bold text-gray-900 text-lg">輪次人數設定</h2>
               <p className="text-xs text-gray-400 mt-0.5">決定每輪可參與的人數上限，用來計算每人持股上限</p>
@@ -957,7 +969,7 @@ export default function InvestorsPage() {
                 </div>
               ))}
             </div>
-            <div className="flex gap-2 px-6 pb-6">
+            <div className="flex gap-2 px-5 sm:px-6 pb-5 sm:pb-6">
               <button onClick={() => setShowSettings(false)} className="flex-1 border border-gray-200 rounded-xl py-2.5 text-sm text-gray-600 hover:bg-gray-50">取消</button>
               <button onClick={saveRoundConfig} disabled={savingRc}
                 className="flex-1 bg-indigo-600 text-white rounded-xl py-2.5 text-sm font-bold hover:bg-indigo-700 disabled:opacity-50">
@@ -970,8 +982,8 @@ export default function InvestorsPage() {
 
       {/* ── Delete confirm ── */}
       {deleteConfirm && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
+        <div className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-50 sm:p-4">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl p-5 sm:p-6 max-w-sm w-full shadow-xl">
             <h3 className="font-semibold text-gray-900 mb-2">確認刪除</h3>
             <p className="text-sm text-gray-600 mb-5">確定要刪除此股東？此操作無法復原。</p>
             <div className="flex gap-2">
@@ -984,12 +996,12 @@ export default function InvestorsPage() {
 
       {/* ── Add/Edit Modal ── */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-start justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl my-8">
-            <div className="px-6 py-4 border-b border-gray-100">
+        <div className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-50 sm:p-4">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="px-5 sm:px-6 py-4 border-b border-gray-100 sticky top-0 bg-white z-10">
               <h2 className="text-lg font-bold text-gray-900">{editId ? '編輯股東' : '新增股東'}</h2>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-5 sm:p-6 space-y-4">
               {/* 從第一輪選擇（僅第二、三輪新增時顯示） */}
               {(form.round === '2' || form.round === '3') && !editId && byRound(1).length > 0 && (
                 <div className="bg-indigo-50 rounded-xl p-3">
@@ -1080,7 +1092,7 @@ export default function InvestorsPage() {
                 </div>
               </div>
             </div>
-            <div className="px-6 py-4 border-t border-gray-100 flex gap-2">
+            <div className="px-5 sm:px-6 py-4 border-t border-gray-100 flex gap-2">
               <button onClick={() => setShowModal(false)} className="flex-1 border border-gray-200 rounded-xl py-2.5 text-sm text-gray-600 hover:bg-gray-50">取消</button>
               <button onClick={save} disabled={saving || !form.name.trim()}
                 className="flex-1 bg-indigo-600 text-white rounded-xl py-2.5 text-sm font-bold hover:bg-indigo-700 disabled:opacity-50">

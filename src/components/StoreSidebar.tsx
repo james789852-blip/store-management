@@ -66,7 +66,7 @@ interface StoreBasic {
   status: StoreStatus
 }
 
-export function StoreSidebar({ storeId }: { storeId: string }) {
+export function StoreSidebar({ storeId, onClose }: { storeId: string; onClose?: () => void }) {
   const pathname = usePathname()
   const [store, setStore] = useState<StoreBasic | null>(null)
   const { user, profile, signOut } = useAuth()
@@ -82,7 +82,7 @@ export function StoreSidebar({ storeId }: { storeId: string }) {
 
   const grad = store ? AVATAR_GRAD[store.status] : 'from-violet-500 to-purple-600'
   const displayName = profile?.display_name || user?.email?.split('@')[0] || '...'
-  const roleLabel = profile?.role ? ROLE_LABEL[profile.role] : ''
+  const roleLabel = profile?.title || (profile?.role ? ROLE_LABEL[profile.role] : '')
 
   return (
     <aside className="w-52 bg-white border-r border-gray-100 flex flex-col flex-shrink-0 h-full overflow-hidden">
@@ -131,6 +131,7 @@ export function StoreSidebar({ storeId }: { storeId: string }) {
                 <Link
                   key={item.id}
                   href={href}
+                  onClick={onClose}
                   className={`flex items-center px-3 py-2 rounded-xl text-sm mb-0.5 font-medium transition-all ${
                     isActive
                       ? 'bg-gradient-to-r from-orange-500 to-amber-400 text-white shadow-md'

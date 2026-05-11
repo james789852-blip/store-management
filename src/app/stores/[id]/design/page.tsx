@@ -116,12 +116,12 @@ export default function DesignPage() {
   }, {} as Record<DesignCategory, number>)
 
   return (
-    <div className="bg-gray-50 min-h-full p-8">
+    <div className="bg-gray-50 min-h-full p-4 sm:p-8">
       <div className="max-w-5xl mx-auto">
 
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-5 sm:mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">設計檔案</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">設計檔案</h1>
             <p className="text-sm text-gray-400 mt-0.5">共 {files.length} 個檔案</p>
           </div>
           <button onClick={openAdd}
@@ -130,7 +130,8 @@ export default function DesignPage() {
           </button>
         </div>
 
-        <div className="flex gap-1 mb-6 bg-white rounded-xl border border-gray-200 p-1 w-fit">
+        <div className="overflow-x-auto mb-6 pb-0.5">
+        <div className="flex gap-1 bg-white rounded-xl border border-gray-200 p-1 w-fit">
           {ALL_CATS.map(c => (
             <button key={c} onClick={() => setCatFilter(c)}
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${catFilter === c ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'}`}>
@@ -142,6 +143,7 @@ export default function DesignPage() {
               )}
             </button>
           ))}
+        </div>
         </div>
 
         {loading ? (
@@ -200,8 +202,11 @@ export default function DesignPage() {
                         <div className="flex flex-wrap gap-1">
                           {others.map((url, i) => (
                             <a key={i} href={url} target="_blank" rel="noopener noreferrer"
-                              className="text-sm text-blue-600 hover:underline font-medium">
-                              檔案 {others.length > 1 ? i + 1 : ''} →
+                              className="inline-flex items-center gap-1 text-xs text-blue-600 bg-blue-50 hover:bg-blue-100 active:bg-blue-200 px-3 py-1.5 rounded-lg font-medium transition-colors">
+                              <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                              </svg>
+                              {others.length > 1 ? `檔案 ${i + 1}` : '開啟檔案'}
                             </a>
                           ))}
                           {urls.length === 0 && <span className="text-sm text-gray-300">無連結</span>}
@@ -212,7 +217,7 @@ export default function DesignPage() {
                   )
                 })()}
 
-                <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="absolute top-3 right-3 flex gap-1 transition-opacity">
                   <button onClick={() => openEdit(f)}
                     className="px-2 py-1 text-xs bg-white border border-gray-200 rounded-lg text-gray-500 hover:text-blue-600 shadow-sm">
                     編輯
@@ -229,10 +234,12 @@ export default function DesignPage() {
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-xl">
-            <h2 className="font-bold text-gray-900 text-lg mb-5">{editing ? '編輯檔案' : '新增檔案'}</h2>
-            <div className="space-y-3">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 sm:p-4">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md shadow-xl max-h-[92vh] flex flex-col">
+            <div className="px-5 sm:px-6 pt-5 sm:pt-6 pb-4 border-b border-gray-100">
+              <h2 className="font-bold text-gray-900 text-lg">{editing ? '編輯檔案' : '新增檔案'}</h2>
+            </div>
+            <div className="overflow-y-auto flex-1 px-5 sm:px-6 py-5 space-y-3">
               <div>
                 <label className="text-sm font-medium text-gray-700">檔案名稱 *</label>
                 <input autoFocus
@@ -289,7 +296,7 @@ export default function DesignPage() {
                 </datalist>
               </div>
             </div>
-            <div className="flex gap-2 mt-6">
+            <div className="px-5 sm:px-6 pb-5 sm:pb-6 pt-4 border-t border-gray-100 flex gap-2">
               <button onClick={() => setShowModal(false)}
                 className="flex-1 border border-gray-200 text-gray-600 py-2.5 rounded-xl text-sm hover:bg-gray-50">取消</button>
               <button onClick={save} disabled={!form.name || saving}

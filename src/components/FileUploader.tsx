@@ -102,7 +102,7 @@ export default function FileUploader({
               <button
                 type="button"
                 onClick={() => remove(url)}
-                className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-gray-700 text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-red-500 transition-all leading-none"
+                className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-gray-700 text-white text-xs flex items-center justify-center sm:opacity-0 sm:group-hover:opacity-100 hover:bg-red-500 active:bg-red-500 transition-all leading-none"
               >
                 ×
               </button>

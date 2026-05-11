@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: '無權限' }, { status: 403 })
   }
 
-  const { email, display_name, role } = await request.json()
+  const { email, display_name, role, title } = await request.json()
   if (!email || !display_name || !role) {
     return NextResponse.json({ error: '資料不完整' }, { status: 400 })
   }
@@ -32,7 +32,7 @@ export async function POST(request: Request) {
   const origin = new URL(request.url).origin
   const { data: invited, error } = await adminSupabase.auth.admin.inviteUserByEmail(email, {
     data: { display_name, role },
-    redirectTo: `${origin}/auth/confirm?next=/`,
+    redirectTo: `${origin}/auth/callback`,
   })
 
   if (error) {
@@ -45,7 +45,19 @@ export async function POST(request: Request) {
     email,
     role,
     display_name,
+    title: title || null,
   })
+
+  // If 老闆, grant access to all stores
+  if (title === '老闆') {
+    const { data: stores } = await adminSupabase.from('stores').select('id')
+    if (stores?.length) {
+      await adminSupabase.from('store_members').upsert(
+        stores.map(s => ({ store_id: s.id, user_id: invited.user.id })),
+        { onConflict: 'store_id,user_id' }
+      )
+    }
+  }
 
   return NextResponse.json({ ok: true })
 }

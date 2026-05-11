@@ -24,11 +24,12 @@ export async function proxy(request: NextRequest) {
 
   const { pathname } = request.nextUrl
 
-  // Allow login page always
+  // Allow login and auth callback pages
   if (pathname === '/login') {
     if (user) return NextResponse.redirect(new URL('/', request.url))
     return response
   }
+  if (pathname.startsWith('/auth/')) return response
 
   // Protect all other routes
   if (!user) {

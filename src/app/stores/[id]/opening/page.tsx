@@ -94,11 +94,16 @@ export default function OpeningPage() {
   useEffect(() => { load() }, [id]) // eslint-disable-line
 
   async function load() {
-    const [{ data: list }, { data: gov }] = await Promise.all([
+    const [{ data: list, error: listError }, { data: gov }] = await Promise.all([
       supabase.from('opening_checklist').select('*').eq('store_id', id).order('sort_order'),
       supabase.from('gov_applications').select('status').eq('store_id', id),
     ])
     setGovApps(gov || [])
+
+    if (listError) {
+      setLoading(false)
+      return
+    }
 
     const allRows = list || []
     const configRow = allRows.find(r => r.name === CONFIG_NAME)
@@ -263,15 +268,32 @@ export default function OpeningPage() {
         ? items.find(i => i.id === editItemId)?.sort_order ?? 99
         : Math.max(0, ...items.map(i => i.sort_order)) + 1,
     }
+    const targetCategory = itemForm.category
     if (editItemId) {
-      await supabase.from('opening_checklist').update(payload).eq('id', editItemId)
+      const { error } = await supabase.from('opening_checklist').update(payload).eq('id', editItemId)
+      if (error) {
+        setSavingItem(false)
+        alert('儲存失敗：' + error.message)
+        return
+      }
+      setItems(prev => prev.map(i => i.id === editItemId ? { ...i, ...payload } : i))
     } else {
-      await supabase.from('opening_checklist').insert(payload)
+      const { data: newItem, error } = await supabase
+        .from('opening_checklist')
+        .insert(payload)
+        .select()
+        .single()
+      if (error || !newItem) {
+        setSavingItem(false)
+        alert(error ? '新增失敗：' + error.message : '新增失敗，請再試一次')
+        return
+      }
+      setItems(prev => [...prev, newItem])
+      setCollapsed(c => ({ ...c, [targetCategory]: false }))
     }
     setSavingItem(false)
     setShowItemModal(false)
     setEditItemId(null)
-    load()
   }
 
   async function confirmDeleteItem() {
@@ -298,12 +320,12 @@ export default function OpeningPage() {
   if (loading) return <div className="flex items-center justify-center py-32 text-gray-400">載入中...</div>
 
   return (
-    <div className="bg-gray-50 min-h-full p-8">
+    <div className="bg-gray-50 min-h-full p-4 sm:p-8">
       <div className="max-w-3xl mx-auto">
         {/* Header */}
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <h1 className="text-2xl font-bold text-gray-900">開幕確認</h1>
+        <div className="mb-5 sm:mb-6">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">開幕確認</h1>
             <div className="flex gap-2">
               <button
                 onClick={openCatModal}
@@ -449,7 +471,7 @@ export default function OpeningPage() {
                                 </button>
                               )}
                             </div>
-                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                            <div className="flex gap-1 transition-opacity flex-shrink-0">
                               <button onClick={() => openEditItem(item)} className="text-xs text-blue-500 hover:text-blue-700 px-1.5 py-1">編輯</button>
                               <button onClick={() => setDeleteItemId(item.id)} className="text-xs text-red-400 hover:text-red-600 px-1.5 py-1">刪除</button>
                             </div>
@@ -597,8 +619,9 @@ export default function OpeningPage() {
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-700">說明</label>
-                <input
-                  className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                <textarea
+                  rows={4}
+                  className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                   value={itemForm.description}
                   onChange={e => setItemForm(f => ({ ...f, description: e.target.value }))}
                   placeholder="補充說明或注意事項"

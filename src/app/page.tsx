@@ -57,13 +57,22 @@ export default function Home() {
   const [form, setForm] = useState({ name: '', address: '', monthly_rent: '', sqft: '', open_date: '' })
   const [saving, setSaving] = useState(false)
   const isComposing = useRef(false)
-  const { user, profile, signOut } = useAuth()
+  const { user, profile, loading: authLoading, signOut } = useAuth()
 
-  useEffect(() => { loadStores() }, [])
+  useEffect(() => { if (!authLoading && user) loadStores() }, [authLoading, user]) // eslint-disable-line
 
   async function loadStores() {
-    const { data } = await supabase.from('stores').select('*').order('created_at', { ascending: false })
-    setStores(data || [])
+    if (profile?.role === 'super_admin' || profile?.title === '老闆') {
+      const { data } = await supabase.from('stores').select('*').order('created_at', { ascending: false })
+      setStores(data || [])
+    } else if (user) {
+      const { data } = await supabase
+        .from('store_members')
+        .select('stores(*)')
+        .eq('user_id', user.id)
+      const list = (data ?? []).map((m: any) => m.stores).filter(Boolean)
+      setStores(list as Store[])
+    }
     setLoading(false)
   }
 
@@ -108,7 +117,7 @@ export default function Home() {
           </div>
           <div className="flex items-center gap-2">
             {!loading && stores.length > 0 && (
-              <div className="flex items-center gap-4 mr-3">
+              <div className="hidden sm:flex items-center gap-4 mr-3">
                 {(['building', 'open', 'paused'] as StoreStatus[]).filter(s => counts[s] > 0).map(s => (
                   <div key={s} className="text-center">
                     <p className="text-lg font-bold text-white leading-none">{counts[s]}</p>
@@ -118,19 +127,28 @@ export default function Home() {
               </div>
             )}
             <Link href="/sop"
-              className="px-3.5 py-1.5 rounded-lg text-sm text-white/70 hover:text-white hover:bg-white/15 transition-colors font-medium">
+              className="hidden sm:inline-flex px-3.5 py-1.5 rounded-lg text-sm text-white/70 hover:text-white hover:bg-white/15 transition-colors font-medium">
               SOP 知識庫
             </Link>
             {profile?.role === 'super_admin' && (
               <Link href="/admin/users"
-                className="px-3.5 py-1.5 rounded-lg text-sm text-white/70 hover:text-white hover:bg-white/15 transition-colors font-medium">
-                使用者管理
+                className="inline-flex items-center justify-center w-8 h-8 sm:w-auto sm:h-auto sm:px-3.5 sm:py-1.5 rounded-lg text-white/70 hover:text-white hover:bg-white/15 transition-colors font-medium"
+                title="使用者管理">
+                <svg className="w-5 h-5 sm:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                  <circle cx="9" cy="7" r="4"/>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+                <span className="hidden sm:inline text-sm">使用者管理</span>
               </Link>
             )}
-            <button onClick={() => setShowAdd(true)}
-              className="bg-orange-500 text-white px-4 py-1.5 rounded-lg text-sm font-bold hover:bg-orange-400 transition-colors shadow-lg">
-              + 新增店面
-            </button>
+            {(profile?.role === 'super_admin' || profile?.title === '老闆') && (
+              <button onClick={() => setShowAdd(true)}
+                className="bg-orange-500 text-white px-3 sm:px-4 py-1.5 rounded-lg text-sm font-bold hover:bg-orange-400 transition-colors shadow-lg">
+                <span className="hidden sm:inline">+ 新增店面</span>
+                <span className="sm:hidden">+ 新增</span>
+              </button>
+            )}
             {/* User menu */}
             <div className="flex items-center gap-2 pl-2 border-l border-white/20 ml-1">
               <Link href="/profile" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
@@ -164,7 +182,7 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-6 py-8">
+      <main className="max-w-6xl mx-auto px-4 py-5 sm:px-6 sm:py-8">
 
         {/* Filter tabs */}
         {!loading && stores.length > 0 && (
@@ -200,11 +218,13 @@ export default function Home() {
             </div>
             <h2 className="text-gray-700 font-bold text-xl mb-1.5">尚無店面資料</h2>
             <p className="text-gray-400 text-sm mb-7">新增第一間店面，開始管理建置進度</p>
-            <button onClick={() => setShowAdd(true)}
-              className="bg-gradient-to-r from-orange-500 to-amber-400 text-white px-6 py-2.5 rounded-xl text-sm font-bold hover:from-orange-600 hover:to-amber-500 transition-all shadow-lg"
-              style={{ boxShadow: '0 4px 16px 0 rgba(249,115,22,0.45)' }}>
-              + 新增第一間店面
-            </button>
+            {(profile?.role === 'super_admin' || profile?.title === '老闆') && (
+              <button onClick={() => setShowAdd(true)}
+                className="bg-gradient-to-r from-orange-500 to-amber-400 text-white px-6 py-2.5 rounded-xl text-sm font-bold hover:from-orange-600 hover:to-amber-500 transition-all shadow-lg"
+                style={{ boxShadow: '0 4px 16px 0 rgba(249,115,22,0.45)' }}>
+                + 新增第一間店面
+              </button>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -276,13 +296,13 @@ export default function Home() {
 
       {/* Add store modal */}
       {showAdd && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
-            <div className="px-6 py-5 border-b border-gray-100">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 sm:p-4">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md shadow-2xl overflow-hidden">
+            <div className="px-5 sm:px-6 py-5 border-b border-gray-100">
               <h2 className="font-bold text-gray-900 text-lg">新增店面</h2>
               <p className="text-sm text-gray-400 mt-0.5">建立後可進入店面填寫詳細資料</p>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-5 sm:p-6 space-y-4">
               <div>
                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">店名 *</label>
                 <input autoFocus
@@ -327,7 +347,7 @@ export default function Home() {
                   onChange={e => setForm(f => ({ ...f, open_date: e.target.value }))} />
               </div>
             </div>
-            <div className="flex gap-2 px-6 pb-6">
+            <div className="flex gap-2 px-5 sm:px-6 pb-5 sm:pb-6">
               <button
                 onClick={() => { setShowAdd(false); setForm({ name: '', address: '', monthly_rent: '', sqft: '', open_date: '' }) }}
                 className="flex-1 border border-gray-200 text-gray-600 py-2.5 rounded-xl text-sm hover:bg-gray-50 transition-colors font-medium">

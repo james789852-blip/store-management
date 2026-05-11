@@ -402,6 +402,53 @@ function WeekView({ items }: { items: BuildSchedule[] }) {
         ))}
       </div>
 
+      {/* Daily schedule list */}
+      <div className="border-t border-gray-200">
+        <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-100">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">每日工項清單</p>
+        </div>
+        {days.map(day => {
+          const hasTasks = day.tasks.length > 0
+          return (
+            <div key={day.dateStr} className={`border-b border-gray-100 last:border-b-0 ${day.isToday ? 'bg-indigo-50/40' : ''}`}>
+              <div className={`flex items-center gap-2.5 px-4 py-2 ${hasTasks ? 'bg-gray-50/60' : 'bg-transparent'}`}>
+                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                  day.isToday ? 'bg-indigo-600 text-white' : day.isWeekend ? 'text-rose-500' : 'text-gray-500'
+                }`}>
+                  {day.dayNum}
+                </div>
+                <span className={`text-xs font-semibold ${day.isWeekend ? 'text-rose-400' : 'text-gray-500'}`}>
+                  週{day.weekLabel}
+                </span>
+                {day.isToday && <span className="text-[10px] text-indigo-500 font-medium bg-indigo-100 px-1.5 py-0.5 rounded-full">今天</span>}
+                {hasTasks && (
+                  <span className="ml-auto text-[10px] text-gray-400">{day.tasks.length} 項工項</span>
+                )}
+              </div>
+              {hasTasks ? (
+                <div className="px-4 pb-3 pt-1 space-y-1.5">
+                  {day.tasks.map(task => {
+                    const ds = displayStatus(task)
+                    return (
+                      <div key={task.id} className="flex items-center gap-2.5 py-1.5 px-3 rounded-xl bg-white border border-gray-100">
+                        <div className={`w-2 h-2 rounded-full shrink-0 ${CAL_DOT[ds]}`} />
+                        <span className="text-sm font-medium text-gray-800 flex-1 min-w-0 truncate">{task.task_name}</span>
+                        {task.vendor && <span className="text-xs text-gray-400 shrink-0 hidden sm:inline">{task.vendor}</span>}
+                        <span className={`shrink-0 text-xs px-2 py-0.5 rounded-full font-medium ${SCHEDULE_BADGE[ds]}`}>
+                          {SCHEDULE_STATUS_LABEL[ds]}
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div className="px-4 py-2 text-xs text-gray-300">無工項</div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+
       {/* Legend */}
       <div className="flex items-center gap-4 px-5 py-3 border-t border-gray-100 bg-gray-50 flex-wrap">
         {(['ongoing', 'pending', 'done', 'overdue'] as ScheduleStatus[]).map(s => (
@@ -533,14 +580,14 @@ export default function SchedulePage() {
   }
 
   return (
-    <div className="bg-gray-50 min-h-full p-8">
+    <div className="bg-gray-50 min-h-full p-4 sm:p-8">
       <div className="max-w-5xl mx-auto">
 
         {/* Header */}
-        <div className="flex items-start justify-between mb-6">
+        <div className="flex flex-wrap items-start justify-between gap-3 mb-5 sm:mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">建置排程</h1>
-            <div className="flex items-center gap-4 mt-1.5 text-sm text-gray-400">
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">建置排程</h1>
+            <div className="flex flex-wrap items-center gap-3 mt-1.5 text-sm text-gray-400">
               <span>共 {totalCount} 項工項</span>
               <span className="text-green-600 font-medium">完成 {doneCount}</span>
               <span className="text-blue-600 font-medium">進行中 {ongoingCount}</span>
@@ -622,9 +669,13 @@ export default function SchedulePage() {
             </button>
           </div>
         ) : view === 'week' ? (
-          <WeekView items={items} />
+          <div className="overflow-x-auto rounded-2xl">
+            <div className="min-w-[560px]"><WeekView items={items} /></div>
+          </div>
         ) : view === 'month' ? (
-          <MonthCalendarView items={items} />
+          <div className="overflow-x-auto rounded-2xl">
+            <div className="min-w-[560px]"><MonthCalendarView items={items} /></div>
+          </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-20 text-gray-400">
             <p className="text-sm">沒有符合的工項</p>
@@ -672,7 +723,7 @@ export default function SchedulePage() {
                           </td>
                           <td className="px-4 py-3">
                             <div
-                              className="opacity-0 group-hover:opacity-100 flex gap-1 transition-opacity"
+                              className="flex gap-1 transition-opacity"
                               onClick={e => e.stopPropagation()}
                             >
                               <button
@@ -718,8 +769,8 @@ export default function SchedulePage() {
 
       {/* Add / Edit Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-lg p-6 shadow-xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 sm:p-4">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg p-5 sm:p-6 shadow-xl max-h-[90vh] overflow-y-auto">
             <h2 className="font-bold text-gray-900 text-lg mb-5">
               {editId ? '編輯工項' : '新增工項'}
             </h2>
