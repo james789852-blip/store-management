@@ -118,8 +118,10 @@ export default function OverviewPage() {
   const [todos, setTodos] = useState<OvTodo[]>([])
   const [totalExpenses, setTotalExpenses] = useState(0)
   const [totalInvPct, setTotalInvPct] = useState(0)
+  const [totalInvAmount, setTotalInvAmount] = useState(0)
   const [targetInvPct, setTargetInvPct] = useState(30)
   const [logs, setLogs] = useState<OvLog[]>([])
+  const [progressExpanded, setProgressExpanded] = useState(false)
   const [editing, setEditing] = useState(false)
   const [form, setForm] = useState<Partial<Store>>({})
   const [saving, setSaving] = useState(false)
@@ -151,7 +153,7 @@ export default function OverviewPage() {
         .select('total, pay_status, deposit_amount')
         .eq('store_id', id),
       supabase.from('investors')
-        .select('percentage')
+        .select('percentage, amount')
         .eq('store_id', id),
       supabase.from('construction_logs')
         .select('id, date, task_name, vendor, status, progress, issue')
@@ -173,6 +175,7 @@ export default function OverviewPage() {
     setTotalExpenses(paid + partial)
 
     setTotalInvPct((invData || []).reduce((s, i) => s + (i.percentage ?? 0), 0))
+    setTotalInvAmount((invData || []).reduce((s, i) => s + (i.amount ?? 0), 0))
     if (budgetData?.investor_percentage) setTargetInvPct(budgetData.investor_percentage)
 
     setLogs((logData || []) as OvLog[])
@@ -336,10 +339,19 @@ export default function OverviewPage() {
         {/* ── 3. 建置整體進度條 ── */}
         {schTotal > 0 && (
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-            <div className="flex items-center justify-between mb-3">
+            <button
+              className="w-full flex items-center justify-between mb-3 text-left"
+              onClick={() => setProgressExpanded(e => !e)}
+            >
               <span className="text-sm font-semibold text-gray-700">建置整體進度</span>
-              <span className="text-xs text-gray-500">{schPct}% · {schDone}/{schTotal} 工項完成</span>
-            </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500">{schPct}% · {schDone}/{schTotal} 工項完成</span>
+                <svg className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${progressExpanded ? 'rotate-180' : ''}`}
+                  fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </button>
             <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden mb-6">
               <div className="h-full rounded-full transition-all duration-500"
                 style={{ width: `${schPct}%`, background: 'linear-gradient(90deg, #3B82F6 0%, #10B981 100%)' }} />
@@ -378,6 +390,37 @@ export default function OverviewPage() {
                 </div>
               )
             })()}
+            {/* 展開：完整工項列表 */}
+            {progressExpanded && (
+              <div className="mt-5 border-t border-gray-100 pt-4 space-y-3">
+                {schedules.map(s => {
+                  const pct = schedulePct(s)
+                  const barCls = s.status === 'done'    ? 'bg-emerald-400'
+                               : s.status === 'ongoing' ? 'bg-blue-400'
+                               : s.status === 'overdue' ? 'bg-red-400'
+                               : 'bg-gray-200'
+                  const timeHint = scheduleTimeLabel(s, today)
+                  return (
+                    <div key={s.id} className="flex items-center gap-3">
+                      <div className="shrink-0" style={{ width: 88 }}>
+                        <p className="text-xs text-gray-700 truncate font-medium" title={s.task_name}>{s.task_name}</p>
+                        {timeHint && (
+                          <p className={`text-[10px] mt-0.5 ${s.status === 'overdue' ? 'text-red-500' : s.status === 'ongoing' ? 'text-blue-500' : s.status === 'done' ? 'text-emerald-500' : 'text-gray-400'}`}>
+                            {timeHint}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div className={`h-full rounded-full transition-all ${barCls}`} style={{ width: `${pct}%` }} />
+                      </div>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold shrink-0 ${SCHEDULE_BADGE[s.status]}`}>
+                        {SCHEDULE_STATUS_LABEL[s.status]}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         )}
 
@@ -433,6 +476,9 @@ export default function OverviewPage() {
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col">
             <p className="text-xs font-medium text-gray-400 mb-2">股東募資</p>
             <p className="text-2xl font-bold text-gray-900 tracking-tight">{totalInvPct.toFixed(1)}%</p>
+            {totalInvAmount > 0 && (
+              <p className="text-sm font-semibold text-gray-600 mt-0.5">{fmtMoney(totalInvAmount)}</p>
+            )}
             <p className="text-xs text-gray-400 mt-1">目標 {targetInvPct}% · 剩 {remainInvPct.toFixed(1)}%</p>
             <Link href={`/stores/${id}/investors`} className="mt-auto pt-3 text-xs text-blue-500 hover:text-blue-600 font-medium">
               查看股東 →
