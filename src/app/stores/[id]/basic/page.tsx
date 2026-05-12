@@ -60,7 +60,6 @@ export default function BasicPage() {
   const [form, setForm] = useState<FormData>({})
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
-  const [revealed, setRevealed] = useState<Record<string, boolean>>({})
   const [activeTab, setActiveTab] = useState<'basic' | 'accounts' | 'contacts'>('basic')
 
   // contacts state
@@ -179,8 +178,6 @@ export default function BasicPage() {
         <div className="bg-white rounded-2xl border border-gray-200 p-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {fields.map(field => {
-              const isSecret = 'secret' in field && field.secret
-              const isRevealed = revealed[field.key]
               const isTextarea = 'textarea' in field && field.textarea
               const fieldVal = String(val(field.key))
 
@@ -190,7 +187,7 @@ export default function BasicPage() {
                     {field.label}
                     {'required' in field && field.required && <span className="text-red-500 ml-0.5">*</span>}
                   </label>
-                  <div className="relative mt-1">
+                  <div className="mt-1">
                     {isTextarea ? (
                       <textarea
                         rows={3}
@@ -200,20 +197,11 @@ export default function BasicPage() {
                       />
                     ) : (
                       <input
-                        type={isSecret && !isRevealed ? 'password' : ('type' in field ? field.type as string : 'text')}
-                        className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 pr-16"
+                        type={'type' in field ? field.type as string : 'text'}
+                        className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         value={fieldVal}
                         onChange={e => set(field.key, e.target.value)}
                       />
-                    )}
-                    {isSecret && (
-                      <button
-                        type="button"
-                        onClick={() => setRevealed(r => ({ ...r, [field.key]: !r[field.key] }))}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 hover:text-gray-700"
-                      >
-                        {isRevealed ? '隱藏' : '顯示'}
-                      </button>
                     )}
                   </div>
                 </div>
