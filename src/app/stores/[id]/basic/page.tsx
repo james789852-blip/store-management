@@ -41,7 +41,7 @@ const FIELD_GROUPS = {
     { key: 'cctv_port', label: '監視器 HTTP 埠' },
     { key: 'cctv_nickname', label: '監視器設備暱稱' },
     { key: 'cctv_account', label: '監視器使用者名稱' },
-    { key: 'cctv_password', label: '監視器密碼', secret: true },
+    { key: 'cctv_password', label: '監視器密碼' },
     { key: 'pos_account', label: 'POS 帳號' },
     { key: 'pos_password', label: 'POS 密碼', secret: true },
   ],
