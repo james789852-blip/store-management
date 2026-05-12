@@ -483,14 +483,18 @@ export default function ExpensesPage() {
                     </div>
                     <div>
                       <label className={labelCls}>訂金日期</label>
-                      <div className="flex items-center gap-1">
-                        <input type="date" className={`${inputCls} flex-1`}
-                          value={form.deposit_date} onChange={e => setForm(f => ({ ...f, deposit_date: e.target.value }))} />
-                        {form.deposit_date && (
-                          <button type="button" onClick={() => setForm(f => ({ ...f, deposit_date: '' }))}
-                            className="shrink-0 w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors text-sm mt-1">✕</button>
-                        )}
-                      </div>
+                      {form.deposit_amount ? (
+                        <div className="flex items-center gap-1">
+                          <input type="date" className={`${inputCls} flex-1`}
+                            value={form.deposit_date} onChange={e => setForm(f => ({ ...f, deposit_date: e.target.value }))} />
+                          {form.deposit_date && (
+                            <button type="button" onClick={() => setForm(f => ({ ...f, deposit_date: '' }))}
+                              className="shrink-0 w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors text-sm mt-1">✕</button>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="mt-1 text-xs text-gray-300 py-2.5">請先填寫訂金金額</p>
+                      )}
                     </div>
                     <div>
                       <label className={labelCls}>尾款金額</label>
@@ -499,14 +503,18 @@ export default function ExpensesPage() {
                     </div>
                     <div>
                       <label className={labelCls}>尾款日期</label>
-                      <div className="flex items-center gap-1">
-                        <input type="date" className={`${inputCls} flex-1`}
-                          value={form.balance_date} onChange={e => setForm(f => ({ ...f, balance_date: e.target.value }))} />
-                        {form.balance_date && (
-                          <button type="button" onClick={() => setForm(f => ({ ...f, balance_date: '' }))}
-                            className="shrink-0 w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors text-sm mt-1">✕</button>
-                        )}
-                      </div>
+                      {form.balance_amount ? (
+                        <div className="flex items-center gap-1">
+                          <input type="date" className={`${inputCls} flex-1`}
+                            value={form.balance_date} onChange={e => setForm(f => ({ ...f, balance_date: e.target.value }))} />
+                          {form.balance_date && (
+                            <button type="button" onClick={() => setForm(f => ({ ...f, balance_date: '' }))}
+                              className="shrink-0 w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors text-sm mt-1">✕</button>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="mt-1 text-xs text-gray-300 py-2.5">請先填寫尾款金額</p>
+                      )}
                     </div>
                     <div>
                       <label className={labelCls}>發票號碼</label>
