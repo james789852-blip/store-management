@@ -43,7 +43,7 @@ const FIELD_GROUPS = {
     { key: 'cctv_account', label: '監視器使用者名稱' },
     { key: 'cctv_password', label: '監視器密碼' },
     { key: 'pos_account', label: 'POS 帳號' },
-    { key: 'pos_password', label: 'POS 密碼', secret: true },
+    { key: 'pos_password', label: 'POS 密碼' },
   ],
   contacts: [
     { key: 'owner_name', label: '負責人姓名' },
