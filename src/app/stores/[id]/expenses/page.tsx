@@ -483,8 +483,14 @@ export default function ExpensesPage() {
                     </div>
                     <div>
                       <label className={labelCls}>訂金日期</label>
-                      <input type="date" className={inputCls}
-                        value={form.deposit_date} onChange={e => setForm(f => ({ ...f, deposit_date: e.target.value }))} />
+                      <div className="relative">
+                        <input type="date" className={inputCls}
+                          value={form.deposit_date} onChange={e => setForm(f => ({ ...f, deposit_date: e.target.value }))} />
+                        {form.deposit_date && (
+                          <button type="button" onClick={() => setForm(f => ({ ...f, deposit_date: '' }))}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-base leading-none">✕</button>
+                        )}
+                      </div>
                     </div>
                     <div>
                       <label className={labelCls}>尾款金額</label>
@@ -493,8 +499,14 @@ export default function ExpensesPage() {
                     </div>
                     <div>
                       <label className={labelCls}>尾款日期</label>
-                      <input type="date" className={inputCls}
-                        value={form.balance_date} onChange={e => setForm(f => ({ ...f, balance_date: e.target.value }))} />
+                      <div className="relative">
+                        <input type="date" className={inputCls}
+                          value={form.balance_date} onChange={e => setForm(f => ({ ...f, balance_date: e.target.value }))} />
+                        {form.balance_date && (
+                          <button type="button" onClick={() => setForm(f => ({ ...f, balance_date: '' }))}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-base leading-none">✕</button>
+                        )}
+                      </div>
                     </div>
                     <div>
                       <label className={labelCls}>發票號碼</label>
