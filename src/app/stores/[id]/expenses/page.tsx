@@ -483,12 +483,12 @@ export default function ExpensesPage() {
                     </div>
                     <div>
                       <label className={labelCls}>訂金日期</label>
-                      <div className="relative">
-                        <input type="date" className={inputCls}
+                      <div className="flex items-center gap-1">
+                        <input type="date" className={`${inputCls} flex-1`}
                           value={form.deposit_date} onChange={e => setForm(f => ({ ...f, deposit_date: e.target.value }))} />
                         {form.deposit_date && (
                           <button type="button" onClick={() => setForm(f => ({ ...f, deposit_date: '' }))}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-base leading-none">✕</button>
+                            className="shrink-0 w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors text-sm mt-1">✕</button>
                         )}
                       </div>
                     </div>
@@ -499,12 +499,12 @@ export default function ExpensesPage() {
                     </div>
                     <div>
                       <label className={labelCls}>尾款日期</label>
-                      <div className="relative">
-                        <input type="date" className={inputCls}
+                      <div className="flex items-center gap-1">
+                        <input type="date" className={`${inputCls} flex-1`}
                           value={form.balance_date} onChange={e => setForm(f => ({ ...f, balance_date: e.target.value }))} />
                         {form.balance_date && (
                           <button type="button" onClick={() => setForm(f => ({ ...f, balance_date: '' }))}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-base leading-none">✕</button>
+                            className="shrink-0 w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors text-sm mt-1">✕</button>
                         )}
                       </div>
                     </div>
