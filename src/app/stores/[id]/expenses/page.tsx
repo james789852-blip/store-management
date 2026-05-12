@@ -28,6 +28,7 @@ type ExpenseForm = {
   balance_date: string
   invoice_no: string
   invoice_amount: string
+  tax_amount: string
   note: string
   photos: string[]
 }
@@ -48,6 +49,7 @@ function emptyForm(): ExpenseForm {
     balance_date: '',
     invoice_no: '',
     invoice_amount: '',
+    tax_amount: '',
     note: '',
     photos: [],
   }
@@ -99,6 +101,7 @@ export default function ExpensesPage() {
       balance_date: form.balance_date || null,
       invoice_no: form.invoice_no || null,
       invoice_amount: form.invoice_amount ? Number(form.invoice_amount) : null,
+      tax_amount: form.tax_amount ? Number(form.tax_amount) : null,
       photos: form.photos,
       note: form.note || null,
     }
@@ -140,6 +143,7 @@ export default function ExpensesPage() {
       balance_date: e.balance_date || '',
       invoice_no: e.invoice_no || '',
       invoice_amount: e.invoice_amount != null ? String(e.invoice_amount) : '',
+      tax_amount: e.tax_amount != null ? String(e.tax_amount) : '',
       note: e.note || '',
       photos: e.photos || [],
     })
@@ -175,6 +179,7 @@ export default function ExpensesPage() {
       尾款日期: e.balance_date || '',
       發票號碼: e.invoice_no || '',
       發票金額: e.invoice_amount ?? '',
+      稅外加金額: e.tax_amount ?? '',
       備註: e.note || '',
     }))
     const ws = XLSX.utils.json_to_sheet(rows)
@@ -195,6 +200,7 @@ export default function ExpensesPage() {
   const totalAll = expenses.reduce((s, e) => s + e.total, 0)
   const totalPaid = expenses.filter(e => e.pay_status === 'paid').reduce((s, e) => s + e.total, 0)
   const totalPending = expenses.filter(e => e.pay_status === 'pending').reduce((s, e) => s + e.total, 0)
+  const totalTax = expenses.reduce((s, e) => s + (e.tax_amount ?? 0), 0)
   const filteredTotal = filtered.reduce((s, e) => s + e.total, 0)
 
   const inputCls = 'mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
@@ -222,6 +228,12 @@ export default function ExpensesPage() {
                 <p className="text-xs text-gray-400">未付款</p>
                 <p className="text-base sm:text-lg font-bold text-gray-500">NT$ {totalPending.toLocaleString()}</p>
               </div>
+              {totalTax > 0 && (
+                <div className="bg-amber-50 rounded-xl border border-amber-200 px-3 sm:px-4 py-2 sm:py-2.5">
+                  <p className="text-xs text-amber-600">稅外加合計</p>
+                  <p className="text-base sm:text-lg font-bold text-amber-700">NT$ {totalTax.toLocaleString()}</p>
+                </div>
+              )}
             </div>
           </div>
           <div className="flex gap-2 pt-1">
@@ -303,6 +315,9 @@ export default function ExpensesPage() {
                           <td className="px-4 py-3 text-gray-500">{exp.vendor || '-'}</td>
                           <td className="px-4 py-3 whitespace-nowrap">
                             <span className="font-semibold text-gray-800">NT$ {exp.total.toLocaleString()}</span>
+                            {exp.tax_amount != null && exp.tax_amount > 0 && (
+                              <p className="text-[10px] text-amber-600 font-medium mt-0.5">+稅 {exp.tax_amount.toLocaleString()}</p>
+                            )}
                           </td>
                           <td className="px-4 py-3 text-gray-500">{exp.pay_method || '-'}</td>
                           <td className="px-4 py-3">
@@ -347,6 +362,12 @@ export default function ExpensesPage() {
                                 )}
                                 {exp.pay_date && <div><p className="text-xs text-gray-400 mb-0.5">付款日期</p><p className="font-medium">{exp.pay_date}</p></div>}
                                 {exp.invoice_no && <div><p className="text-xs text-gray-400 mb-0.5">發票號碼</p><p className="font-medium">{exp.invoice_no}{exp.invoice_amount ? ` · NT$ ${exp.invoice_amount.toLocaleString()}` : ''}</p></div>}
+                                {exp.tax_amount != null && exp.tax_amount > 0 && (
+                                  <div>
+                                    <p className="text-xs text-amber-600 mb-0.5 font-semibold">稅外加金額</p>
+                                    <p className="font-semibold text-amber-700">NT$ {exp.tax_amount.toLocaleString()}</p>
+                                  </div>
+                                )}
                                 {exp.note && <div className="col-span-2 sm:col-span-4"><p className="text-xs text-gray-400 mb-0.5">備註</p><p className="text-gray-700 whitespace-pre-wrap">{exp.note}</p></div>}
                                 {exp.photos?.length > 0 && (
                                   <div className="col-span-2 sm:col-span-4">
@@ -484,6 +505,14 @@ export default function ExpensesPage() {
                       <label className={labelCls}>發票金額</label>
                       <input type="number" className={inputCls} placeholder="0"
                         value={form.invoice_amount} onChange={e => setForm(f => ({ ...f, invoice_amount: e.target.value }))} />
+                    </div>
+                    <div className="col-span-2">
+                      <label className={labelCls}>
+                        稅外加金額
+                        <span className="ml-1.5 text-[10px] text-amber-600 font-normal">（開立發票時另外計算的稅額）</span>
+                      </label>
+                      <input type="number" className={`${inputCls} border-amber-200 focus:ring-amber-400`} placeholder="例：1050（5% 稅額）"
+                        value={form.tax_amount} onChange={e => setForm(f => ({ ...f, tax_amount: e.target.value }))} />
                     </div>
                     <div className="col-span-2">
                       <label className={labelCls}>備註</label>

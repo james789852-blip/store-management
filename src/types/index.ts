@@ -135,6 +135,7 @@ export interface Expense {
   balance_date: string | null
   invoice_no: string | null
   invoice_amount: number | null
+  tax_amount: number | null
   photos: string[]
   note: string | null
   created_at: string
