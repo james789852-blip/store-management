@@ -9,7 +9,7 @@ import { PAY_BADGE } from '@/lib/colors'
 import FileUploader from '@/components/FileUploader'
 
 const CATEGORY_SUGGESTIONS = ['裝潢工程', '水電', '設備', '設計', '招牌', '租金', '押金', '雜費']
-const PAY_METHOD_SUGGESTIONS = ['現金', '轉帳', '支票']
+const PAY_METHOD_SUGGESTIONS = ['現金', '轉帳', '支票', '信用卡']
 
 type PayStatusFilter = 'all' | PayStatus
 
@@ -29,6 +29,7 @@ type ExpenseForm = {
   invoice_no: string
   invoice_amount: string
   tax_amount: string
+  reimbursed: boolean
   note: string
   photos: string[]
 }
@@ -50,6 +51,7 @@ function emptyForm(): ExpenseForm {
     invoice_no: '',
     invoice_amount: '',
     tax_amount: '',
+    reimbursed: false,
     note: '',
     photos: [],
   }
@@ -66,6 +68,7 @@ export default function ExpensesPage() {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<PayStatusFilter>('all')
+  const [reimbursedFilter, setReimbursedFilter] = useState<'all' | 'yes' | 'no'>('all')
   const [lightbox, setLightbox] = useState<string | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
@@ -102,6 +105,7 @@ export default function ExpensesPage() {
       invoice_no: form.invoice_no || null,
       invoice_amount: form.invoice_amount ? Number(form.invoice_amount) : null,
       tax_amount: form.tax_amount ? Number(form.tax_amount) : null,
+      reimbursed: form.reimbursed,
       photos: form.photos,
       note: form.note || null,
     }
@@ -144,6 +148,7 @@ export default function ExpensesPage() {
       invoice_no: e.invoice_no || '',
       invoice_amount: e.invoice_amount != null ? String(e.invoice_amount) : '',
       tax_amount: e.tax_amount != null ? String(e.tax_amount) : '',
+      reimbursed: e.reimbursed ?? false,
       note: e.note || '',
       photos: e.photos || [],
     })
@@ -180,6 +185,7 @@ export default function ExpensesPage() {
       發票號碼: e.invoice_no || '',
       發票金額: e.invoice_amount ?? '',
       稅外加金額: e.tax_amount ?? '',
+      已請款: e.reimbursed ? '是' : '否',
       備註: e.note || '',
     }))
     const ws = XLSX.utils.json_to_sheet(rows)
@@ -194,13 +200,15 @@ export default function ExpensesPage() {
   const filtered = expenses.filter(e => {
     const catOk = categoryFilter === 'all' || e.category === categoryFilter
     const statOk = statusFilter === 'all' || e.pay_status === statusFilter
-    return catOk && statOk
+    const rmbOk = reimbursedFilter === 'all' || (reimbursedFilter === 'yes' ? e.reimbursed : !e.reimbursed)
+    return catOk && statOk && rmbOk
   })
 
   const totalAll = expenses.reduce((s, e) => s + e.total, 0)
   const totalPaid = expenses.filter(e => e.pay_status === 'paid').reduce((s, e) => s + e.total, 0)
   const totalPending = expenses.filter(e => e.pay_status === 'pending').reduce((s, e) => s + e.total, 0)
   const totalTax = expenses.reduce((s, e) => s + (e.tax_amount ?? 0), 0)
+  const totalUnreimbursed = expenses.filter(e => !e.reimbursed).reduce((s, e) => s + e.total, 0)
   const filteredTotal = filtered.reduce((s, e) => s + e.total, 0)
 
   const inputCls = 'mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
@@ -232,6 +240,12 @@ export default function ExpensesPage() {
                 <div className="bg-amber-50 rounded-xl border border-amber-200 px-3 sm:px-4 py-2 sm:py-2.5">
                   <p className="text-xs text-amber-600">稅外加合計</p>
                   <p className="text-base sm:text-lg font-bold text-amber-700">NT$ {totalTax.toLocaleString()}</p>
+                </div>
+              )}
+              {totalUnreimbursed > 0 && (
+                <div className="bg-purple-50 rounded-xl border border-purple-200 px-3 sm:px-4 py-2 sm:py-2.5">
+                  <p className="text-xs text-purple-600">未請款</p>
+                  <p className="text-base sm:text-lg font-bold text-purple-700">NT$ {totalUnreimbursed.toLocaleString()}</p>
                 </div>
               )}
             </div>
@@ -273,6 +287,18 @@ export default function ExpensesPage() {
                 </button>
               ))}
             </div>
+
+            {/* Reimbursed tabs */}
+            <div className="flex bg-white border border-gray-200 rounded-xl overflow-hidden">
+              {([['all', '全部請款'], ['no', '未請款'], ['yes', '已請款']] as const).map(([val, label]) => (
+                <button
+                  key={val}
+                  onClick={() => setReimbursedFilter(val)}
+                  className={`px-3 py-2 text-sm transition-colors ${reimbursedFilter === val ? 'bg-purple-600 text-white' : 'text-gray-500 hover:bg-gray-50'}`}>
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
@@ -292,7 +318,7 @@ export default function ExpensesPage() {
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 border-b border-gray-100">
                   <tr>
-                    {['日期', '類別', '品項', '廠商', '金額', '付款方式', '狀態', '照片', '操作'].map(h => (
+                    {['日期', '類別', '品項', '廠商', '金額', '付款方式', '狀態', '請款', '照片', '操作'].map(h => (
                       <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
@@ -326,6 +352,15 @@ export default function ExpensesPage() {
                             </span>
                           </td>
                           <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                            <button
+                              onClick={() => {
+                                supabase.from('expenses').update({ reimbursed: !exp.reimbursed }).eq('id', exp.id).then(() => load())
+                              }}
+                              className={`text-xs px-2 py-0.5 rounded-full font-medium transition-colors cursor-pointer ${exp.reimbursed ? 'bg-purple-100 text-purple-700 hover:bg-purple-200' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}>
+                              {exp.reimbursed ? '已請款' : '未請款'}
+                            </button>
+                          </td>
+                          <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                             {exp.photos?.length > 0 && (
                               <div className="flex gap-1">
                                 {exp.photos.slice(0, 3).map(url => (
@@ -352,7 +387,7 @@ export default function ExpensesPage() {
                         </tr>
                         {isExpanded && (
                           <tr key={`${exp.id}-detail`} className="bg-blue-50 border-t border-blue-100">
-                            <td colSpan={9} className="px-6 py-4">
+                            <td colSpan={10} className="px-6 py-4">
                               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
                                 {exp.deposit_amount != null && (
                                   <>
@@ -538,6 +573,18 @@ export default function ExpensesPage() {
                       <label className={labelCls}>備註</label>
                       <textarea rows={2} className={`${inputCls} resize-none`}
                         value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="flex items-center gap-3 cursor-pointer select-none mt-1">
+                        <div
+                          onClick={() => setForm(f => ({ ...f, reimbursed: !f.reimbursed }))}
+                          className={`w-11 h-6 rounded-full transition-colors relative flex-shrink-0 ${form.reimbursed ? 'bg-purple-600' : 'bg-gray-200'}`}>
+                          <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${form.reimbursed ? 'translate-x-5' : ''}`} />
+                        </div>
+                        <span className={`text-sm font-medium ${form.reimbursed ? 'text-purple-700' : 'text-gray-500'}`}>
+                          {form.reimbursed ? '已向公司請款' : '尚未向公司請款'}
+                        </span>
+                      </label>
                     </div>
                   </div>
                 </div>
