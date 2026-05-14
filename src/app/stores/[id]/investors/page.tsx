@@ -62,7 +62,7 @@ function floor2(n: number) { return Math.floor(n * 1000) / 1000 }
 // ── Main Component ────────────────────────────────────────────
 export default function InvestorsPage() {
   const { id } = useParams<{ id: string }>()
-  const { profile } = useAuth()
+  const { user, profile } = useAuth()
   const [tab, setTab] = useState<TabType>('investors')
   const [investors, setInvestors] = useState<Investor[]>([])
   const [storeData, setStoreData] = useState<{ sqft: number | null; price_per_sqft: number | null; total_valuation: number | null } | null>(null)
@@ -80,7 +80,7 @@ export default function InvestorsPage() {
   const isComposing = useRef(false)
 
   // ── Contract email state ──────────────────────────────────
-  const [fromEmail, setFromEmail] = useState('kaize1213@liang-ping.com')
+  const [fromEmail, setFromEmail] = useState('')
   const [batchDeadline, setBatchDeadline] = useState('')
   const [batchSignDate, setBatchSignDate] = useState('')
   const [applyingBatch, setApplyingBatch] = useState(false)
@@ -100,6 +100,10 @@ export default function InvestorsPage() {
       if (data) setStoreName(data.name)
     })
   }, [id]) // eslint-disable-line
+
+  useEffect(() => {
+    if (user?.email) setFromEmail(user.email)
+  }, [user])
 
   const triggerContractUpload = useCallback((invId: string) => {
     setUploadingId(invId)
@@ -390,7 +394,7 @@ export default function InvestorsPage() {
         body: JSON.stringify({
           investors: [{ id: inv.id, name: inv.name, email: inv.email, percentage: inv.percentage, amount: inv.amount, pay_deadline: inv.pay_deadline, round: inv.round }],
           contractUrl: inv.contract_url,
-          storeName, fromEmail,
+          storeName, replyTo: fromEmail,
         }),
       })
       const json = await res.json()
@@ -427,7 +431,7 @@ export default function InvestorsPage() {
           pay_deadline: i.pay_deadline, round: i.round,
           contractUrl: i.contract_url,
         })),
-        contractUrl: '', storeName, fromEmail,
+        contractUrl: '', storeName, replyTo: fromEmail,
       }),
     })
     const json = await res.json()

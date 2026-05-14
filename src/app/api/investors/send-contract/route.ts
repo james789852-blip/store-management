@@ -71,11 +71,11 @@ export async function POST(request: Request) {
     return Response.json({ error: 'GMAIL_USER or GMAIL_APP_PASSWORD not set' }, { status: 500 })
   }
 
-  const { investors, contractUrl, storeName } = await request.json() as {
+  const { investors, contractUrl, storeName, replyTo } = await request.json() as {
     investors: InvestorPayload[]
     contractUrl: string
     storeName: string
-    fromEmail?: string
+    replyTo?: string
   }
 
   const transporter = nodemailer.createTransport({
@@ -98,6 +98,7 @@ export async function POST(request: Request) {
     try {
       await transporter.sendMail({
         from: `"${storeName}" <${gmailUser}>`,
+        ...(replyTo ? { replyTo } : {}),
         to: inv.email,
         subject: `【${storeName}】認股合約書 — ${inv.name}`,
         html: buildHtml(inv, url, storeName),
