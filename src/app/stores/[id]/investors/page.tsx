@@ -241,29 +241,37 @@ export default function InvestorsPage() {
     setSendingId(group.key)
     setSingleSendResult(null)
     const roundLabel = group.rounds.sort((a,b)=>a-b).join('、')
-    const res = await fetch('/api/investors/send-contract', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        investors: [{ id: group.ids[0], name: group.name, email: group.email,
-          percentage: group.totalPct, amount: group.totalAmount,
-          pay_deadline: group.payDeadline ?? null, round: roundLabel, contractUrl: group.contractUrl }],
-        contractUrl: group.contractUrl, storeName,
-      }),
-    })
-    const json = await res.json()
-    const r = json.results?.[0]
-    if (r?.success) {
-      for (const invId of group.ids) {
-        await supabase.from('investors').update({ contract_sent: true }).eq('id', invId)
+    try {
+      const res = await fetch('/api/investors/send-contract', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          investors: [{ id: group.ids[0], name: group.name, email: group.email,
+            percentage: group.totalPct, amount: group.totalAmount,
+            pay_deadline: group.payDeadline ?? null, round: roundLabel, contractUrl: group.contractUrl }],
+          contractUrl: group.contractUrl, storeName,
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok) {
+        setSingleSendResult({ name: group.name, success: false, reason: json.error ?? `HTTP ${res.status}` })
+      } else {
+        const r = json.results?.[0]
+        if (r?.success) {
+          for (const invId of group.ids) {
+            await supabase.from('investors').update({ contract_sent: true }).eq('id', invId)
+          }
+          setInvestors(prev => prev.map(i => group.ids.includes(i.id) ? { ...i, contract_sent: true } : i))
+          setSingleSendResult({ name: group.name, success: true })
+        } else {
+          setSingleSendResult({ name: group.name, success: false, reason: r?.reason ?? '寄送失敗' })
+        }
       }
-      setInvestors(prev => prev.map(i => group.ids.includes(i.id) ? { ...i, contract_sent: true } : i))
-      setSingleSendResult({ name: group.name, success: true })
-    } else {
-      setSingleSendResult({ name: group.name, success: false, reason: r?.reason ?? '寄送失敗' })
+    } catch (e) {
+      setSingleSendResult({ name: group.name, success: false, reason: String(e) })
     }
     setSendingId(null)
-    setTimeout(() => setSingleSendResult(null), 6000)
+    setTimeout(() => setSingleSendResult(null), 10000)
   }
 
   async function applyBatchDates() {
@@ -375,25 +383,33 @@ export default function InvestorsPage() {
     if (!inv.email || !inv.contract_url) return
     setSendingId(inv.id)
     setSingleSendResult(null)
-    const res = await fetch('/api/investors/send-contract', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        investors: [{ id: inv.id, name: inv.name, email: inv.email, percentage: inv.percentage, amount: inv.amount, pay_deadline: inv.pay_deadline, round: inv.round }],
-        contractUrl: inv.contract_url,
-        storeName, fromEmail,
-      }),
-    })
-    const json = await res.json()
-    const r = json.results?.[0]
-    if (r?.success) {
-      await quickUpdate(inv.id, { contract_sent: true })
-      setSingleSendResult({ name: inv.name, success: true })
-    } else {
-      setSingleSendResult({ name: inv.name, success: false, reason: r?.reason ?? '寄送失敗' })
+    try {
+      const res = await fetch('/api/investors/send-contract', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          investors: [{ id: inv.id, name: inv.name, email: inv.email, percentage: inv.percentage, amount: inv.amount, pay_deadline: inv.pay_deadline, round: inv.round }],
+          contractUrl: inv.contract_url,
+          storeName, fromEmail,
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok) {
+        setSingleSendResult({ name: inv.name, success: false, reason: json.error ?? `HTTP ${res.status}` })
+      } else {
+        const r = json.results?.[0]
+        if (r?.success) {
+          await quickUpdate(inv.id, { contract_sent: true })
+          setSingleSendResult({ name: inv.name, success: true })
+        } else {
+          setSingleSendResult({ name: inv.name, success: false, reason: r?.reason ?? '寄送失敗' })
+        }
+      }
+    } catch (e) {
+      setSingleSendResult({ name: inv.name, success: false, reason: String(e) })
     }
     setSendingId(null)
-    setTimeout(() => setSingleSendResult(null), 6000)
+    setTimeout(() => setSingleSendResult(null), 10000)
   }
 
   async function sendContracts(onlyUnsent: boolean) {
@@ -415,7 +431,9 @@ export default function InvestorsPage() {
       }),
     })
     const json = await res.json()
-    if (json.results) {
+    if (!res.ok) {
+      setSendResults([{ id: '', name: '系統錯誤', success: false, reason: json.error ?? `HTTP ${res.status}` }])
+    } else if (json.results) {
       setSendResults(json.results)
       const sentIds = (json.results as { id: string; success: boolean }[]).filter(r => r.success).map(r => r.id)
       for (const invId of sentIds) {
