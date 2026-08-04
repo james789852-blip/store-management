@@ -11,6 +11,26 @@ import FileUploader from '@/components/FileUploader'
 const CATEGORY_SUGGESTIONS = ['裝潢工程', '水電', '設備', '設計', '招牌', '租金', '押金', '雜費']
 const PAY_METHOD_SUGGESTIONS = ['現金', '轉帳', '支票', '信用卡']
 
+// 類別圖示與配色(找不到就用預設)
+const CAT_META: Record<string, { icon: string; color: string; bg: string }> = {
+  '裝潢工程': { icon: '🔨', color: '#B45309', bg: '#FBF1E4' },
+  '工程':     { icon: '🔨', color: '#B45309', bg: '#FBF1E4' },
+  '水電':     { icon: '💡', color: '#BA7517', bg: '#FAEEDA' },
+  '設備':     { icon: '🧊', color: '#185FA5', bg: '#E8F2FC' },
+  '設計':     { icon: '🎨', color: '#534AB7', bg: '#EDEEF8' },
+  '招牌':     { icon: '🪧', color: '#D4537E', bg: '#FBEAF0' },
+  '租金':     { icon: '🏠', color: '#534AB7', bg: '#EDEEF8' },
+  '押金':     { icon: '🏠', color: '#534AB7', bg: '#EDEEF8' },
+  '租約':     { icon: '🏠', color: '#534AB7', bg: '#EDEEF8' },
+  '貨商':     { icon: '📦', color: '#1D9E75', bg: '#E6F6F1' },
+  '行政':     { icon: '📋', color: '#5F5E5A', bg: '#F1EFE8' },
+  '雜費':     { icon: '🍜', color: '#888780', bg: '#F1EFE8' },
+  '文具雜支': { icon: '✏️', color: '#888780', bg: '#F1EFE8' },
+}
+function catMeta(c: string | null) {
+  return (c && CAT_META[c]) || { icon: '💰', color: '#888780', bg: '#F1EFE8' }
+}
+
 type PayStatusFilter = 'all' | PayStatus
 
 type ExpenseForm = {
@@ -211,6 +231,15 @@ export default function ExpensesPage() {
   const totalUnreimbursed = expenses.filter(e => !e.reimbursed).reduce((s, e) => s + e.total, 0)
   const filteredTotal = filtered.reduce((s, e) => s + e.total, 0)
 
+  // 花費分布(依類別),由大到小
+  const byCategory = Object.entries(
+    expenses.reduce<Record<string, number>>((acc, e) => {
+      const k = e.category || '未分類'
+      acc[k] = (acc[k] ?? 0) + e.total
+      return acc
+    }, {})
+  ).sort((a, b) => b[1] - a[1])
+
   const inputCls = 'mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent'
   const labelCls = 'text-xs font-medium text-gray-600'
 
@@ -261,6 +290,33 @@ export default function ExpensesPage() {
               <p className="text-xs text-gray-500 mb-1.5">未請款</p>
               <p className="text-xl font-bold text-accent truncate">NT$ {totalUnreimbursed.toLocaleString()}</p>
               <p className="text-[11px] text-gray-400 mt-1.5 truncate">尚未向公司請款</p>
+            </div>
+          </div>
+        )}
+
+        {/* 錢花在哪 — 花費分布 */}
+        {expenses.length > 0 && byCategory.length > 0 && (
+          <div className="lp-card p-5 mb-5">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-semibold text-gray-800">錢花在哪</span>
+              <span className="text-xs text-gray-400">共 {byCategory.length} 類</span>
+            </div>
+            <div className="space-y-2.5">
+              {byCategory.slice(0, 6).map(([cat, amount]) => {
+                const pct = totalAll > 0 ? Math.round((amount / totalAll) * 100) : 0
+                const meta = catMeta(cat === '未分類' ? null : cat)
+                return (
+                  <div key={cat}>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-gray-600">{meta.icon} {cat}</span>
+                      <span className="text-gray-900 font-medium">NT$ {amount.toLocaleString()} · {pct}%</span>
+                    </div>
+                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                      <div className="h-full rounded-full" style={{ width: `${pct}%`, background: meta.color }} />
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           </div>
         )}
@@ -317,129 +373,72 @@ export default function ExpensesPage() {
             <p className="text-base font-medium text-gray-500">沒有符合篩選條件的記錄</p>
           </div>
         ) : (
-          <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50 border-b border-gray-100">
-                  <tr>
-                    {['日期', '類別', '品項', '廠商', '金額', '付款方式', '狀態', '請款', '照片', '操作'].map(h => (
-                      <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map(exp => {
-                    const isExpanded = expandedId === exp.id
-                    return (
-                      <>
-                        <tr key={exp.id}
-                          onClick={() => setExpandedId(isExpanded ? null : exp.id)}
-                          className={`group border-t border-gray-50 cursor-pointer transition-colors ${isExpanded ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
-                          <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{exp.date}</td>
-                          <td className="px-4 py-3">
-                            {exp.category
-                              ? <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{exp.category}</span>
-                              : <span className="text-gray-300">-</span>}
-                          </td>
-                          <td className="px-4 py-3 font-medium text-gray-800">{exp.name}</td>
-                          <td className="px-4 py-3 text-gray-500">{exp.vendor || '-'}</td>
-                          <td className="px-4 py-3 whitespace-nowrap">
-                            <span className="font-semibold text-gray-800">NT$ {exp.total.toLocaleString()}</span>
-                            {exp.tax_amount != null && exp.tax_amount > 0 && (
-                              <p className="text-[10px] text-amber-600 font-medium mt-0.5">+稅 {exp.tax_amount.toLocaleString()}</p>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-gray-500">{exp.pay_method || '-'}</td>
-                          <td className="px-4 py-3">
-                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${PAY_BADGE[exp.pay_status]}`}>
-                              {PAY_STATUS_LABEL[exp.pay_status]}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                            <button
-                              onClick={() => {
-                                supabase.from('expenses').update({ reimbursed: !exp.reimbursed }).eq('id', exp.id).then(() => load())
-                              }}
-                              className={`text-xs px-2 py-0.5 rounded-full font-medium transition-colors cursor-pointer ${exp.reimbursed ? 'bg-purple-100 text-purple-700 hover:bg-purple-200' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}>
-                              {exp.reimbursed ? '已請款' : '未請款'}
-                            </button>
-                          </td>
-                          <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                            {exp.photos?.length > 0 && (
-                              <div className="flex gap-1">
-                                {exp.photos.slice(0, 3).map(url => (
-                                  <img key={url} src={url} alt="" onClick={() => setLightbox(url)}
-                                    className="w-8 h-8 rounded-lg object-cover border border-gray-200 cursor-zoom-in hover:opacity-80 transition-opacity" />
-                                ))}
-                                {exp.photos.length > 3 && (
-                                  <button onClick={() => setLightbox(exp.photos[3])}
-                                    className="text-xs text-gray-400 self-center hover:text-blue-500">
-                                    +{exp.photos.length - 3}
-                                  </button>
-                                )}
-                              </div>
-                            )}
-                          </td>
-                          <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                            <div className="flex gap-1 transition-opacity">
-                              <button onClick={() => startEdit(exp)}
-                                className="text-xs text-blue-500 hover:text-blue-700 px-2 py-1">編輯</button>
-                              <button onClick={() => setDeleteConfirm(exp.id)}
-                                className="text-xs text-red-400 hover:text-red-600 px-2 py-1">刪除</button>
-                            </div>
-                          </td>
-                        </tr>
-                        {isExpanded && (
-                          <tr key={`${exp.id}-detail`} className="bg-blue-50 border-t border-blue-100">
-                            <td colSpan={10} className="px-6 py-4">
-                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
-                                {exp.deposit_amount != null && (
-                                  <>
-                                    <div><p className="text-xs text-gray-400 mb-0.5">訂金</p><p className="font-medium">NT$ {exp.deposit_amount.toLocaleString()}{exp.deposit_date ? ` · ${exp.deposit_date}` : ''}</p></div>
-                                    <div><p className="text-xs text-gray-400 mb-0.5">尾款</p><p className="font-medium">NT$ {(exp.balance_amount ?? 0).toLocaleString()}{exp.balance_date ? ` · ${exp.balance_date}` : ''}</p></div>
-                                  </>
-                                )}
-                                {exp.pay_date && <div><p className="text-xs text-gray-400 mb-0.5">付款日期</p><p className="font-medium">{exp.pay_date}</p></div>}
-                                {exp.invoice_no && <div><p className="text-xs text-gray-400 mb-0.5">發票號碼</p><p className="font-medium">{exp.invoice_no}{exp.invoice_amount ? ` · NT$ ${exp.invoice_amount.toLocaleString()}` : ''}</p></div>}
-                                {exp.tax_amount != null && exp.tax_amount > 0 && (
-                                  <div>
-                                    <p className="text-xs text-amber-600 mb-0.5 font-semibold">稅外加金額</p>
-                                    <p className="font-semibold text-amber-700">NT$ {exp.tax_amount.toLocaleString()}</p>
-                                  </div>
-                                )}
-                                {exp.note && <div className="col-span-2 sm:col-span-4"><p className="text-xs text-gray-400 mb-0.5">備註</p><p className="text-gray-700 whitespace-pre-wrap">{exp.note}</p></div>}
-                                {exp.photos?.length > 0 && (
-                                  <div className="col-span-2 sm:col-span-4">
-                                    <p className="text-xs text-gray-400 mb-1.5">收據 / 照片</p>
-                                    <div className="flex flex-wrap gap-2">
-                                      {exp.photos.map(url => (
-                                        <img key={url} src={url} alt="" onClick={() => setLightbox(url)}
-                                          className="w-16 h-16 rounded-xl object-cover border border-blue-200 cursor-zoom-in hover:opacity-80 transition-opacity" />
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        )}
-                      </>
-                    )
-                  })}
-                </tbody>
-                <tfoot className="bg-gray-50 border-t border-gray-200">
-                  <tr>
-                    <td colSpan={4} className="px-4 py-3 text-sm font-semibold text-gray-700">
-                      合計 {filtered.length} 筆
-                    </td>
-                    <td className="px-4 py-3 font-bold text-gray-900 whitespace-nowrap">
-                      NT$ {filteredTotal.toLocaleString()}
-                    </td>
-                    <td colSpan={4} />
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
+          <div className="space-y-2.5">
+            {filtered.map(exp => {
+              const isExpanded = expandedId === exp.id
+              const meta = catMeta(exp.category)
+              return (
+                <div key={exp.id} className="lp-card overflow-hidden">
+                  <button
+                    onClick={() => setExpandedId(isExpanded ? null : exp.id)}
+                    className={`w-full flex items-center gap-3 p-3 sm:p-3.5 text-left transition-colors ${isExpanded ? 'bg-accent-tint/40' : 'hover:bg-gray-50'}`}
+                  >
+                    <div className="w-11 h-11 rounded-xl flex items-center justify-center text-xl shrink-0" style={{ background: meta.bg }}>{meta.icon}</div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">{exp.name}</p>
+                      <p className="text-xs text-gray-400 truncate">{[exp.vendor, exp.pay_method, exp.date.slice(5)].filter(Boolean).join(' · ')}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-[15px] font-semibold text-gray-900 whitespace-nowrap">NT$ {exp.total.toLocaleString()}</p>
+                      <span className={`inline-block mt-0.5 text-[10px] px-2 py-0.5 rounded-full font-medium ${PAY_BADGE[exp.pay_status]}`}>{PAY_STATUS_LABEL[exp.pay_status]}</span>
+                    </div>
+                    {exp.photos?.length > 0 && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={exp.photos[0]} alt="收據" onClick={e => { e.stopPropagation(); setLightbox(exp.photos[0]) }}
+                        className="w-11 h-11 rounded-lg object-cover shrink-0 cursor-zoom-in hover:opacity-80 transition-opacity" />
+                    )}
+                    <svg className={`w-4 h-4 text-gray-300 shrink-0 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                  </button>
+
+                  {isExpanded && (
+                    <div className="px-3.5 pb-4 pt-1 border-t border-gray-100">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm mt-3">
+                        {exp.category && <div><p className="text-xs text-gray-400 mb-0.5">類別</p><p className="font-medium text-gray-700">{exp.category}</p></div>}
+                        {exp.deposit_amount != null && <div><p className="text-xs text-gray-400 mb-0.5">訂金</p><p className="font-medium text-gray-700">NT$ {exp.deposit_amount.toLocaleString()}{exp.deposit_date ? ` · ${exp.deposit_date}` : ''}</p></div>}
+                        {exp.deposit_amount != null && <div><p className="text-xs text-gray-400 mb-0.5">尾款</p><p className="font-medium text-gray-700">NT$ {(exp.balance_amount ?? 0).toLocaleString()}{exp.balance_date ? ` · ${exp.balance_date}` : ''}</p></div>}
+                        {exp.pay_date && <div><p className="text-xs text-gray-400 mb-0.5">付款日期</p><p className="font-medium text-gray-700">{exp.pay_date}</p></div>}
+                        {exp.invoice_no && <div><p className="text-xs text-gray-400 mb-0.5">發票號碼</p><p className="font-medium text-gray-700">{exp.invoice_no}</p></div>}
+                        {exp.tax_amount != null && exp.tax_amount > 0 && <div><p className="text-xs text-accent mb-0.5 font-semibold">稅外加</p><p className="font-semibold text-accent">NT$ {exp.tax_amount.toLocaleString()}</p></div>}
+                        {exp.note && <div className="col-span-2 sm:col-span-3"><p className="text-xs text-gray-400 mb-0.5">備註</p><p className="text-gray-700 whitespace-pre-wrap">{exp.note}</p></div>}
+                      </div>
+                      {exp.photos?.length > 0 && (
+                        <div className="mt-3">
+                          <p className="text-xs text-gray-400 mb-1.5">收據 / 照片</p>
+                          <div className="flex flex-wrap gap-2">
+                            {exp.photos.map(url => (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img key={url} src={url} alt="收據" onClick={() => setLightbox(url)}
+                                className="w-16 h-16 rounded-xl object-cover cursor-zoom-in hover:opacity-80 transition-opacity" />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2 mt-4">
+                        <button
+                          onClick={() => supabase.from('expenses').update({ reimbursed: !exp.reimbursed }).eq('id', exp.id).then(() => load())}
+                          className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors ${exp.reimbursed ? 'bg-brand-teal-tint text-brand-teal' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+                          {exp.reimbursed ? '✓ 已向公司請款' : '標記為已請款'}
+                        </button>
+                        <div className="ml-auto flex gap-1">
+                          <button onClick={() => startEdit(exp)} className="text-xs text-accent hover:opacity-70 px-2 py-1 font-medium">編輯</button>
+                          <button onClick={() => setDeleteConfirm(exp.id)} className="text-xs text-brand-red hover:opacity-70 px-2 py-1 font-medium">刪除</button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
         )}
 
