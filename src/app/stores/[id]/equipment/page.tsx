@@ -10,6 +10,23 @@ import FileUploader from '@/components/FileUploader'
 
 const PRESET_CATEGORIES = ['廚房設備', '冷凍冷藏', '冷暖空調', '排煙設備', 'POS系統', '家具', '其他']
 
+const EQ_META: Record<string, { icon: string; bg: string }> = {
+  '廚房設備': { icon: '🍳', bg: '#FBF1E4' },
+  '冷凍冷藏': { icon: '🧊', bg: '#E8F2FC' },
+  '冷藏冷凍': { icon: '🧊', bg: '#E8F2FC' },
+  '冷暖空調': { icon: '💨', bg: '#E6F6F1' },
+  '排煙設備': { icon: '💨', bg: '#E6F6F1' },
+  '排煙空調': { icon: '💨', bg: '#E6F6F1' },
+  'POS系統': { icon: '🖥️', bg: '#EDEEF8' },
+  '安全設備': { icon: '🎥', bg: '#FBEAF0' },
+  '家具':     { icon: '🪑', bg: '#FAEEDA' },
+  '外場設備': { icon: '🍽️', bg: '#FAEEDA' },
+  '其他':     { icon: '📦', bg: '#F1EFE8' },
+}
+function eqMeta(c: string | null) {
+  return (c && EQ_META[c]) || { icon: '📦', bg: '#F1EFE8' }
+}
+
 type EquipmentForm = {
   name: string
   category: string
@@ -185,7 +202,6 @@ export default function EquipmentPage() {
   }, [items, categoryFilter, statusFilter])
 
   const totalValue = items.reduce((s, i) => s + (i.unit_price ?? 0) * i.quantity, 0)
-  const filteredValue = filtered.reduce((s, i) => s + (i.unit_price ?? 0) * i.quantity, 0)
   const noPriceCount = items.filter(i => i.unit_price == null).length
 
   const statusCounts = useMemo(() => {
@@ -293,91 +309,54 @@ export default function EquipmentPage() {
           )}
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b border-gray-100">
-                <tr>
-                  {['照片', '設備名稱', '類別', '新舊', '規格 / 電壓', '尺寸 (W×D×H cm)', '數量', '單價', '廠商', '狀態', ''].map(h => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {filtered.map(item => (
-                  <tr key={item.id} className="group hover:bg-gray-50">
-                    <td className="px-4 py-3">
-                      {item.photos?.length > 0 ? (
-                        <div className="relative w-10 h-10 cursor-pointer"
-                          onClick={() => setLightbox({ name: item.name, photos: item.photos, idx: 0 })}>
-                          <img src={item.photos[0]} alt={item.name}
-                            className="w-10 h-10 object-cover rounded-lg border border-gray-100 hover:opacity-80 transition-opacity" />
-                          {item.photos.length > 1 && (
-                            <span className="absolute -top-1 -right-1 w-4 h-4 bg-gray-900 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
-                              {item.photos.length}
-                            </span>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-gray-300 text-xs">無</div>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 font-medium text-gray-800 whitespace-nowrap">{item.name}</td>
-                    <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{item.category || '—'}</td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      {item.condition ? (
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${item.condition === '全新' ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'}`}>
-                          {item.condition}
-                        </span>
-                      ) : '—'}
-                    </td>
-                    <td className="px-4 py-3 text-gray-500">
-                      <div>{item.spec || '—'}</div>
-                      {item.voltage && <div className="text-xs text-gray-400">{item.voltage}</div>}
-                    </td>
-                    <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{dimStr(item)}</td>
-                    <td className="px-4 py-3 text-gray-600 text-center">{item.quantity}</td>
-                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
-                      {item.unit_price !== null ? (
-                        <>
-                          <div>NT$ {item.unit_price.toLocaleString()}</div>
-                          {item.quantity > 1 && (
-                            <div className="text-xs text-gray-400">小計 {(item.unit_price * item.quantity).toLocaleString()}</div>
-                          )}
-                        </>
-                      ) : '—'}
-                    </td>
-                    <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{item.vendor || '—'}</td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${EQUIP_BADGE[item.status]}`}>
-                        {EQUIPMENT_STATUS_LABEL[item.status]}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex gap-1 transition-opacity">
-                        <button onClick={() => startEdit(item)} className="text-xs text-accent hover:text-accent px-2 py-1">編輯</button>
-                        <button onClick={() => setDeleteId(item.id)} className="text-xs text-red-400 hover:text-red-600 px-2 py-1">刪除</button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot className="bg-gray-50 border-t border-gray-200">
-                <tr>
-                  <td colSpan={6} className="px-4 py-3 text-sm font-semibold text-gray-700">
-                    小計 {filtered.length} 項
-                  </td>
-                  <td className="px-4 py-3 text-sm font-bold text-gray-900 text-center">
-                    {filtered.reduce((s, i) => s + i.quantity, 0)}
-                  </td>
-                  <td className="px-4 py-3 text-sm font-bold text-gray-900 whitespace-nowrap">
-                    NT$ {filteredValue.toLocaleString()}
-                  </td>
-                  <td colSpan={3} />
-                </tr>
-              </tfoot>
-            </table>
-          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {filtered.map(item => {
+            const meta = eqMeta(item.category)
+            const dim = dimStr(item)
+            return (
+              <div key={item.id} className="lp-card overflow-hidden flex flex-col">
+                {item.photos?.length > 0 ? (
+                  <button onClick={() => setLightbox({ name: item.name, photos: item.photos, idx: 0 })} className="relative h-32 bg-gray-100">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={item.photos[0]} alt={item.name} className="w-full h-full object-cover hover:opacity-90 transition-opacity" />
+                    {item.photos.length > 1 && (
+                      <span className="absolute top-2 right-2 bg-black/55 text-white text-[10px] font-medium rounded-full px-2 py-0.5">＋{item.photos.length - 1}</span>
+                    )}
+                  </button>
+                ) : (
+                  <div className="h-20 flex items-center justify-center text-3xl" style={{ background: meta.bg }}>{meta.icon}</div>
+                )}
+                <div className="p-4 flex-1 flex flex-col">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="font-semibold text-gray-900 truncate">{item.name}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{[item.category, item.condition].filter(Boolean).join(' · ') || '未分類'}</p>
+                    </div>
+                    <span className={`shrink-0 text-[10px] px-2 py-0.5 rounded-full font-medium ${EQUIP_BADGE[item.status]}`}>{EQUIPMENT_STATUS_LABEL[item.status]}</span>
+                  </div>
+                  {(item.spec || dim !== '—' || item.voltage) && (
+                    <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-xs text-gray-500">
+                      {item.spec && <span>{item.spec}</span>}
+                      {dim !== '—' && <span>{dim} cm</span>}
+                      {item.voltage && <span>{item.voltage}</span>}
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between mt-auto pt-3">
+                    <div>
+                      {item.unit_price !== null
+                        ? <span className="text-sm font-semibold text-gray-900">NT$ {item.unit_price.toLocaleString()}{item.quantity > 1 ? <span className="text-xs text-gray-400 font-normal"> ×{item.quantity}</span> : null}</span>
+                        : <span className="text-xs text-gray-300">未填價格</span>}
+                    </div>
+                    <div className="flex gap-1">
+                      <button onClick={() => startEdit(item)} className="text-xs text-accent hover:opacity-70 px-2 py-1 font-medium">編輯</button>
+                      <button onClick={() => setDeleteId(item.id)} className="text-xs text-brand-red hover:opacity-70 px-2 py-1 font-medium">刪除</button>
+                    </div>
+                  </div>
+                  {item.vendor && <p className="text-[11px] text-gray-400 mt-1">廠商：{item.vendor}</p>}
+                </div>
+              </div>
+            )
+          })}
         </div>
       )}
 
