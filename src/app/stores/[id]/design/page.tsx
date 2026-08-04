@@ -125,7 +125,7 @@ export default function DesignPage() {
             <p className="text-sm text-gray-400 mt-0.5">共 {files.length} 個檔案</p>
           </div>
           <button onClick={openAdd}
-            className="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors">
+            className="bg-gray-900 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-gray-800 transition-colors">
             + 新增檔案
           </button>
         </div>
@@ -154,7 +154,7 @@ export default function DesignPage() {
             <p className="text-gray-500 font-medium mb-1">尚無設計檔案</p>
             <p className="text-gray-400 text-sm mb-4">新增 Logo、菜單、平面圖等設計資料</p>
             <button onClick={openAdd}
-              className="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-blue-700">
+              className="bg-gray-900 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-gray-800">
               + 新增檔案
             </button>
           </div>
@@ -202,7 +202,7 @@ export default function DesignPage() {
                         <div className="flex flex-wrap gap-1">
                           {others.map((url, i) => (
                             <a key={i} href={url} target="_blank" rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 text-xs text-blue-600 bg-blue-50 hover:bg-blue-100 active:bg-blue-200 px-3 py-1.5 rounded-lg font-medium transition-colors">
+                              className="inline-flex items-center gap-1 text-xs text-accent bg-accent-tint hover:bg-accent-tint active:bg-accent-tint px-3 py-1.5 rounded-lg font-medium transition-colors">
                               <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                               </svg>
@@ -219,7 +219,7 @@ export default function DesignPage() {
 
                 <div className="absolute top-3 right-3 flex gap-1 transition-opacity">
                   <button onClick={() => openEdit(f)}
-                    className="px-2 py-1 text-xs bg-white border border-gray-200 rounded-lg text-gray-500 hover:text-blue-600 shadow-sm">
+                    className="px-2 py-1 text-xs bg-white border border-gray-200 rounded-lg text-gray-500 hover:text-accent shadow-sm">
                     編輯
                   </button>
                   <button onClick={() => setDeleteTarget(f)}
@@ -243,15 +243,15 @@ export default function DesignPage() {
               <div>
                 <label className="text-sm font-medium text-gray-700">檔案名稱 *</label>
                 <input autoFocus
-                  className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                   value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
                   placeholder="例：梁平 Logo 最終版" />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-sm font-medium text-gray-700">類別</label>
                   <select
-                    className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                     value={form.category}
                     onChange={e => setForm(f => ({ ...f, category: e.target.value as DesignCategory }))}>
                     {(['logo', 'signage', 'menu', 'floorplan', 'other'] as DesignCategory[]).map(c => (
@@ -262,7 +262,7 @@ export default function DesignPage() {
                 <div>
                   <label className="text-sm font-medium text-gray-700">版本</label>
                   <input
-                    className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                     value={form.version} onChange={e => setForm(f => ({ ...f, version: e.target.value }))}
                     placeholder="1.0" />
                 </div>
@@ -270,7 +270,7 @@ export default function DesignPage() {
               <div>
                 <label className="text-sm font-medium text-gray-700">說明</label>
                 <input
-                  className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                   value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
               </div>
               <div>
@@ -288,7 +288,7 @@ export default function DesignPage() {
               <div>
                 <label className="text-sm font-medium text-gray-700">檔案類型</label>
                 <input list="ft-list"
-                  className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                   value={form.file_type} onChange={e => setForm(f => ({ ...f, file_type: e.target.value }))}
                   placeholder="PDF" />
                 <datalist id="ft-list">
@@ -300,7 +300,7 @@ export default function DesignPage() {
               <button onClick={() => setShowModal(false)}
                 className="flex-1 border border-gray-200 text-gray-600 py-2.5 rounded-xl text-sm hover:bg-gray-50">取消</button>
               <button onClick={save} disabled={!form.name || saving}
-                className="flex-1 bg-blue-600 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 disabled:opacity-50">
+                className="flex-1 bg-gray-900 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 disabled:opacity-50">
                 {saving ? '儲存中...' : '儲存'}
               </button>
             </div>

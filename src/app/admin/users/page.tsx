@@ -188,7 +188,7 @@ export default function AdminUsersPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-gradient-to-br from-blue-900 via-blue-800 to-blue-900" style={{ boxShadow: '0 4px 24px 0 rgba(249,115,22,0.45)' }}>
+      <header className="bg-gray-900" style={{ boxShadow: '0 4px 24px 0 rgba(249,115,22,0.45)' }}>
         <div className="max-w-4xl mx-auto px-6 py-5 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link href="/" className="text-white/60 hover:text-white transition-colors">
@@ -203,7 +203,7 @@ export default function AdminUsersPage() {
           </div>
           <button
             onClick={() => { setShowInvite(true); setInvite(EMPTY_INVITE); setInviteRoleLabel('老闆'); setInviteError(''); setInviteSuccess('') }}
-            className="bg-gradient-to-r from-orange-500 to-amber-400 text-white px-4 py-1.5 rounded-lg text-sm font-bold hover:from-orange-600 hover:to-amber-500 transition-all shadow-lg"
+            className="bg-gray-900 text-white px-4 py-1.5 rounded-lg text-sm font-bold hover:bg-gray-800 transition-all shadow-lg"
           >
             + 邀請使用者
           </button>
@@ -221,7 +221,7 @@ export default function AdminUsersPage() {
               {users.map(u => (
                 <div key={u.id} className="p-4">
                   <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-amber-500 flex items-center justify-center shrink-0">
+                    <div className="w-10 h-10 rounded-full bg-gray-900 flex items-center justify-center shrink-0">
                       <span className="text-white text-sm font-bold leading-none">
                         {(u.display_name || u.email)[0]?.toUpperCase()}
                       </span>
@@ -261,7 +261,7 @@ export default function AdminUsersPage() {
                                 else if (lbl === '股東') { setEditRole('shareholder'); setEditTitle('') }
                                 else { setEditRole('manager') }
                               }}
-                              className="border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
+                              className="border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent bg-white"
                             >
                               <option value="老闆">老闆</option>
                               <option value="管理人員">管理人員</option>
@@ -269,7 +269,7 @@ export default function AdminUsersPage() {
                             </select>
                             {editRoleLabel === '管理人員' && (
                               <select
-                                className="border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
+                                className="border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent bg-white"
                                 value={editTitle}
                                 onChange={e => setEditTitle(e.target.value)}
                               >
@@ -279,7 +279,7 @@ export default function AdminUsersPage() {
                             )}
                           </div>
                           <div className="flex gap-2">
-                            <button onClick={() => updateUser(u.id)} className="text-xs px-3 py-1.5 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors font-medium">確認</button>
+                            <button onClick={() => updateUser(u.id)} className="text-xs px-3 py-1.5 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors font-medium">確認</button>
                             <button onClick={() => setEditingId(null)} className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg text-gray-500 hover:text-gray-800 transition-colors">取消</button>
                           </div>
                         </div>
@@ -322,7 +322,7 @@ export default function AdminUsersPage() {
                   <tr key={u.id} className="border-b border-gray-50 last:border-0">
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-amber-500 flex items-center justify-center shrink-0">
+                        <div className="w-8 h-8 rounded-full bg-gray-900 flex items-center justify-center shrink-0">
                           <span className="text-white text-xs font-bold leading-none">
                             {(u.display_name || u.email)[0]?.toUpperCase()}
                           </span>
@@ -346,7 +346,7 @@ export default function AdminUsersPage() {
                                 else if (lbl === '股東') { setEditRole('shareholder'); setEditTitle('') }
                                 else { setEditRole('manager') }
                               }}
-                              className="border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
+                              className="border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-accent bg-white"
                             >
                               <option value="老闆">老闆</option>
                               <option value="管理人員">管理人員</option>
@@ -354,7 +354,7 @@ export default function AdminUsersPage() {
                             </select>
                             {editRoleLabel === '管理人員' && (
                               <select
-                                className="border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
+                                className="border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-accent bg-white"
                                 value={editTitle}
                                 onChange={e => setEditTitle(e.target.value)}
                               >
@@ -366,7 +366,7 @@ export default function AdminUsersPage() {
                             )}
                           </div>
                           <div className="flex gap-2">
-                            <button onClick={() => updateUser(u.id)} className="text-xs px-2 py-1 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors">確認</button>
+                            <button onClick={() => updateUser(u.id)} className="text-xs px-2 py-1 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors">確認</button>
                             <button onClick={() => setEditingId(null)} className="text-xs px-2 py-1 border border-gray-200 rounded-lg text-gray-500 hover:text-gray-800 transition-colors">取消</button>
                           </div>
                         </div>
@@ -426,7 +426,7 @@ export default function AdminUsersPage() {
       {storeModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="w-full max-w-sm shadow-2xl overflow-hidden rounded-2xl">
-            <div className="bg-gradient-to-br from-blue-900 via-blue-800 to-blue-900 px-6 py-5" style={{ boxShadow: '0 4px 24px 0 rgba(249,115,22,0.3)' }}>
+            <div className="bg-gray-900 px-6 py-5" style={{ boxShadow: '0 4px 24px 0 rgba(249,115,22,0.3)' }}>
               <h2 className="font-bold text-white text-lg">店面存取權限</h2>
               <p className="text-sm text-blue-200 mt-0.5">勾選此使用者可以看到的店面</p>
             </div>
@@ -457,7 +457,7 @@ export default function AdminUsersPage() {
                 取消
               </button>
               <button onClick={saveStoreAccess} disabled={savingStores}
-                className="flex-1 bg-gradient-to-r from-orange-500 to-amber-400 text-white py-2.5 rounded-xl text-sm font-bold hover:from-orange-600 hover:to-amber-500 disabled:opacity-40 transition-all shadow-md"
+                className="flex-1 bg-gray-900 text-white py-2.5 rounded-xl text-sm font-bold hover:bg-gray-800 disabled:opacity-40 transition-all shadow-md"
                 style={{ boxShadow: '0 4px 14px 0 rgba(249,115,22,0.45)' }}>
                 {savingStores ? '儲存中...' : '儲存'}
               </button>
@@ -471,7 +471,7 @@ export default function AdminUsersPage() {
       {pwModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="w-full max-w-sm shadow-2xl overflow-hidden rounded-2xl">
-            <div className="bg-gradient-to-br from-blue-900 via-blue-800 to-blue-900 px-6 py-5">
+            <div className="bg-gray-900 px-6 py-5">
               <h2 className="font-bold text-white text-lg">修改密碼</h2>
               <p className="text-sm text-blue-200 mt-0.5">{pwModal.name}</p>
             </div>
@@ -481,7 +481,7 @@ export default function AdminUsersPage() {
                 <input
                   type="password"
                   autoFocus
-                  className="mt-2 w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
+                  className="mt-2 w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                   placeholder="輸入新密碼"
                   value={newPassword}
                   onChange={e => { setNewPassword(e.target.value); setPwError('') }}
@@ -496,7 +496,7 @@ export default function AdminUsersPage() {
               <button
                 onClick={savePassword}
                 disabled={pwSaving || newPassword.length < 6}
-                className="flex-1 bg-gradient-to-r from-purple-500 to-violet-500 text-white py-2.5 rounded-xl text-sm font-bold hover:from-purple-600 hover:to-violet-600 disabled:opacity-40 transition-all"
+                className="flex-1 bg-gray-900 text-white py-2.5 rounded-xl text-sm font-bold hover:bg-gray-800 disabled:opacity-40 transition-all"
               >
                 {pwSaving ? '更新中...' : '確認更新'}
               </button>
@@ -509,7 +509,7 @@ export default function AdminUsersPage() {
       {showInvite && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="w-full max-w-md shadow-2xl overflow-hidden rounded-2xl">
-            <div className="bg-gradient-to-br from-blue-900 via-blue-800 to-blue-900 px-6 py-5" style={{ boxShadow: '0 4px 24px 0 rgba(249,115,22,0.3)' }}>
+            <div className="bg-gray-900 px-6 py-5" style={{ boxShadow: '0 4px 24px 0 rgba(249,115,22,0.3)' }}>
               <h2 className="font-bold text-white text-lg">邀請使用者</h2>
               <p className="text-sm text-blue-200 mt-0.5">系統將發送設定密碼的郵件</p>
             </div>
@@ -520,7 +520,7 @@ export default function AdminUsersPage() {
                 <input
                   type="email"
                   autoFocus
-                  className="mt-2 w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                  className="mt-2 w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                   placeholder="user@example.com"
                   value={invite.email}
                   onChange={e => setInvite(f => ({ ...f, email: e.target.value }))}
@@ -529,7 +529,7 @@ export default function AdminUsersPage() {
               <div>
                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">姓名 *</label>
                 <input
-                  className="mt-2 w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                  className="mt-2 w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                   placeholder="王小明"
                   value={invite.display_name}
                   onChange={e => setInvite(f => ({ ...f, display_name: e.target.value }))}
@@ -538,7 +538,7 @@ export default function AdminUsersPage() {
               <div>
                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">角色</label>
                 <select
-                  className="mt-2 w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
+                  className="mt-2 w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent bg-white"
                   value={inviteRoleLabel}
                   onChange={e => {
                     const lbl = e.target.value as '老闆' | '管理人員' | '股東'
@@ -556,7 +556,7 @@ export default function AdminUsersPage() {
                 <div>
                   <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">職稱</label>
                   <select
-                    className="mt-2 w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
+                    className="mt-2 w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent bg-white"
                     value={invite.title}
                     onChange={e => setInvite(f => ({ ...f, title: e.target.value }))}
                   >
@@ -583,7 +583,7 @@ export default function AdminUsersPage() {
               <button
                 onClick={sendInvite}
                 disabled={inviting || !invite.email || !invite.display_name}
-                className="flex-1 bg-gradient-to-r from-orange-500 to-amber-400 text-white py-2.5 rounded-xl text-sm font-bold hover:from-orange-600 hover:to-amber-500 disabled:opacity-40 transition-all shadow-md"
+                className="flex-1 bg-gray-900 text-white py-2.5 rounded-xl text-sm font-bold hover:bg-gray-800 disabled:opacity-40 transition-all shadow-md"
                 style={{ boxShadow: '0 4px 14px 0 rgba(249,115,22,0.45)' }}
               >
                 {inviting ? '發送中...' : '發送邀請'}

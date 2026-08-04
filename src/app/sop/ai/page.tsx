@@ -88,11 +88,11 @@ export default function SopAiPage() {
       <div className="flex items-center gap-2 mb-8">
         {STEPS.map((s, i) => (
           <div key={s} className="flex items-center gap-2">
-            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${i <= step ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-400'}`}>
+            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${i <= step ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-400'}`}>
               {i < step ? '✓' : i + 1}
             </div>
             <span className={`text-sm ${i === step ? 'text-gray-900 font-medium' : 'text-gray-400'}`}>{s}</span>
-            {i < STEPS.length - 1 && <div className={`flex-1 h-px w-8 ${i < step ? 'bg-blue-600' : 'bg-gray-200'}`} />}
+            {i < STEPS.length - 1 && <div className={`flex-1 h-px w-8 ${i < step ? 'bg-gray-900' : 'bg-gray-200'}`} />}
           </div>
         ))}
       </div>
@@ -115,7 +115,7 @@ export default function SopAiPage() {
             ))}
           </div>
           <button disabled={!selectedStore} onClick={() => setStep(1)}
-            className="w-full bg-blue-600 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors">
+            className="w-full bg-gray-900 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 disabled:opacity-50 transition-colors">
             下一步
           </button>
         </div>
@@ -145,7 +145,7 @@ export default function SopAiPage() {
           <div className="flex gap-2">
             <button onClick={() => setStep(0)} className="flex-1 border border-gray-200 text-gray-600 py-2.5 rounded-xl text-sm hover:bg-gray-50">上一步</button>
             <button onClick={generate}
-              className="flex-1 bg-blue-600 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 transition-colors">
+              className="flex-1 bg-gray-900 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors">
               開始分析
             </button>
           </div>

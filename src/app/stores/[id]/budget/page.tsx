@@ -110,12 +110,12 @@ export default function BudgetPage() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-4">
                 <div>
                   <label className="text-sm font-medium text-gray-700">坪數</label>
-                  <input type="number" className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  <input type="number" className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                     value={form.sqft} onChange={e => setForm(f => ({ ...f, sqft: e.target.value }))} placeholder="0" />
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-700">每坪單價（元）</label>
-                  <input type="number" className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  <input type="number" className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                     value={form.price_per_sqft} onChange={e => setForm(f => ({ ...f, price_per_sqft: e.target.value }))} />
                 </div>
                 <div>
@@ -133,21 +133,21 @@ export default function BudgetPage() {
                 </div>
               )}
               <button onClick={saveSettings} disabled={saving}
-                className="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                className="bg-gray-900 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-gray-800 disabled:opacity-50 transition-colors">
                 {saving ? '儲存中...' : saved ? '✓ 已儲存' : '儲存'}
               </button>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
               {[
-                { label: '總預算', value: totalBudget, color: 'text-blue-600' },
+                { label: '總預算', value: totalBudget, color: 'text-gray-900' },
                 { label: '實際支出', value: totalActual, color: 'text-gray-900' },
-                { label: remaining >= 0 ? '預算剩餘' : '超支金額', value: Math.abs(remaining), color: remaining >= 0 ? 'text-teal-600' : 'text-red-500' },
-                { label: '待付款', value: pending, color: 'text-amber-600' },
+                { label: remaining >= 0 ? '預算剩餘' : '超支金額', value: Math.abs(remaining), color: remaining >= 0 ? 'text-brand-teal' : 'text-brand-red' },
+                { label: '待付款', value: pending, color: 'text-accent' },
               ].map(card => (
-                <div key={card.label} className="bg-white rounded-2xl border border-gray-200 p-4">
-                  <p className="text-xs text-gray-400 mb-1">{card.label}</p>
-                  <p className={`text-sm sm:text-base font-bold ${card.color} truncate`}>NT$ {card.value.toLocaleString()}</p>
+                <div key={card.label} className="lp-card p-4 min-w-0">
+                  <p className="text-xs text-gray-500 mb-1.5">{card.label}</p>
+                  <p className={`text-lg font-bold ${card.color} truncate`}>NT$ {card.value.toLocaleString()}</p>
                 </div>
               ))}
             </div>
@@ -155,9 +155,10 @@ export default function BudgetPage() {
             <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
               <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
                 <h2 className="font-semibold text-gray-900">費用類別明細</h2>
-                <Link href={`/stores/${id}/expenses`} className="text-sm text-blue-600 hover:underline">前往費用記錄 →</Link>
+                <Link href={`/stores/${id}/expenses`} className="text-sm text-accent hover:underline">前往費用記錄 →</Link>
               </div>
-              <table className="w-full">
+              <div className="overflow-x-auto">
+              <table className="w-full min-w-[420px]">
                 <thead className="bg-gray-50">
                   <tr>{['類別', '實際支出', '佔比'].map(h => <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-gray-500">{h}</th>)}</tr>
                 </thead>
@@ -170,7 +171,7 @@ export default function BudgetPage() {
                         {actual > 0 && totalActual > 0 ? (
                           <div className="flex items-center gap-2">
                             <div className="w-20 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                              <div className="h-full bg-blue-500 rounded-full" style={{ width: `${Math.min(100, (actual / totalActual) * 100)}%` }} />
+                              <div className="h-full bg-accent rounded-full" style={{ width: `${Math.min(100, (actual / totalActual) * 100)}%` }} />
                             </div>
                             <span className="text-xs text-gray-500">{((actual / totalActual) * 100).toFixed(1)}%</span>
                           </div>
@@ -187,6 +188,7 @@ export default function BudgetPage() {
                   )}
                 </tbody>
               </table>
+              </div>
               {totalActual === 0 && (
                 <div className="py-10 text-center text-gray-400 text-sm">尚無費用記錄</div>
               )}
@@ -201,7 +203,7 @@ export default function BudgetPage() {
               {sqft === 0 ? (
                 <p className="text-amber-600 text-sm bg-amber-50 rounded-xl px-4 py-3">請先在「預算總覽」頁籤填入坪數和每坪單價</p>
               ) : (
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   {[
                     { label: '總估值', value: Math.round(totalValuation) },
                     { label: `募資金額（${investorPct}%）`, value: Math.round(totalValuation * investorPct / 100) }, // investorPct = 30
@@ -218,7 +220,7 @@ export default function BudgetPage() {
             <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center">
               <p className="text-gray-500 mb-4">前往股東收款頁管理投資人與付款狀態</p>
               <Link href={`/stores/${id}/investors`}
-                className="bg-blue-600 text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 inline-block">
+                className="bg-gray-900 text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 inline-block">
                 前往股東收款 →
               </Link>
             </div>

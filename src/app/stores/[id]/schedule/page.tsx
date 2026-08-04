@@ -62,6 +62,36 @@ function emptyForm(): ScheduleForm {
   }
 }
 
+// ── 標準建店工序範本 ────────────────────────────────────────────────────────
+// deps: 前置工項在本陣列中的索引（可多個，用於算日期）；depends_on 只存主要前置的 id
+type TemplateStep = { name: string; days: number; deps: number[] }
+
+const STANDARD_BUILD_TEMPLATE: TemplateStep[] = [
+  { name: '簽約與點交',          days: 2,  deps: [] },
+  { name: '現場丈量與規劃',      days: 3,  deps: [0] },
+  { name: '拆除工程',            days: 3,  deps: [1] },
+  { name: '泥作／防水',          days: 5,  deps: [2] },
+  { name: '水電配管配線',        days: 7,  deps: [2] },
+  { name: '空調／排煙',          days: 4,  deps: [4] },
+  { name: '木工／裝潢',          days: 10, deps: [4] },
+  { name: '油漆',                days: 4,  deps: [6] },
+  { name: '廚房設備進場安裝',    days: 3,  deps: [5, 7] },
+  { name: '招牌／燈箱安裝',      days: 5,  deps: [6] },
+  { name: 'POS／網路／監視系統', days: 2,  deps: [8] },
+  { name: '家具／外場佈置',      days: 3,  deps: [7] },
+  { name: '全店清潔',            days: 2,  deps: [8, 9, 10, 11] },
+  { name: '驗收',                days: 1,  deps: [12] },
+  { name: '試營運',              days: 3,  deps: [13] },
+  { name: '開幕',                days: 0,  deps: [14] },
+]
+
+function addDaysStr(dateStr: string, n: number): string {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  const dt = new Date(y, m - 1, d)
+  dt.setDate(dt.getDate() + n)
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`
+}
+
 // ── Month Calendar View ────────────────────────────────────────────────────
 function MonthCalendarView({ items }: { items: BuildSchedule[] }) {
   const now = new Date(TODAY)
@@ -129,7 +159,7 @@ function MonthCalendarView({ items }: { items: BuildSchedule[] }) {
           <p className="text-base font-bold text-gray-800">{year}年{month + 1}月</p>
           <button
             onClick={() => { setYear(now.getFullYear()); setMonth(now.getMonth()) }}
-            className="text-xs text-indigo-600 hover:text-indigo-800 px-2.5 py-1 rounded-lg hover:bg-indigo-50 font-medium border border-indigo-200 transition-colors">
+            className="text-xs text-accent hover:text-accent px-2.5 py-1 rounded-lg hover:bg-accent-tint font-medium border border-gray-200 transition-colors">
             本月
           </button>
         </div>
@@ -161,14 +191,14 @@ function MonthCalendarView({ items }: { items: BuildSchedule[] }) {
                   onClick={() => { if (!cell.inMonth) return; setSelectedDay(d => d === cell.dateStr ? null : cell.dateStr) }}
                   className={`border-r border-gray-100 last:border-r-0 p-2 transition-colors ${
                     !cell.inMonth ? 'bg-gray-50/50' :
-                    isSelected ? 'bg-indigo-50 cursor-pointer' :
+                    isSelected ? 'bg-accent-tint cursor-pointer' :
                     cell.isWeekend ? 'bg-rose-50/20 hover:bg-rose-50/50 cursor-pointer' :
                     'hover:bg-gray-50 cursor-pointer'
                   }`}
                 >
                   <div className="flex justify-end mb-1">
                     <span className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full ${
-                      cell.isToday ? 'bg-indigo-600 text-white' :
+                      cell.isToday ? 'bg-gray-900 text-white' :
                       !cell.inMonth ? 'text-gray-300' :
                       cell.isWeekend ? 'text-rose-400' :
                       'text-gray-600'
@@ -199,14 +229,14 @@ function MonthCalendarView({ items }: { items: BuildSchedule[] }) {
 
       {/* Selected day detail panel */}
       {selectedDay && (
-        <div className="border-t border-indigo-100 bg-indigo-50/80 px-5 py-4">
+        <div className="border-t border-gray-100 bg-accent-tint/80 px-5 py-4">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-sm font-bold text-indigo-700">📅 {selectedDay} 工項</p>
+            <p className="text-sm font-bold text-accent">📅 {selectedDay} 工項</p>
             <button onClick={() => setSelectedDay(null)}
-              className="text-xs text-indigo-400 hover:text-indigo-700 px-2 py-0.5 rounded-lg hover:bg-indigo-100">✕ 關閉</button>
+              className="text-xs text-accent hover:text-accent px-2 py-0.5 rounded-lg hover:bg-accent-tint">✕ 關閉</button>
           </div>
           {selectedTasks.length === 0 ? (
-            <p className="text-sm text-indigo-400">當日無進行中的工項</p>
+            <p className="text-sm text-accent">當日無進行中的工項</p>
           ) : (
             <ul className="space-y-2">
               {selectedTasks.map(item => {
@@ -324,7 +354,7 @@ function WeekView({ items }: { items: BuildSchedule[] }) {
         <div className="flex gap-1">
           <button
             onClick={() => setWeekStart(getMonday(TODAY))}
-            className="text-xs text-indigo-600 hover:text-indigo-800 px-3 py-1.5 rounded-lg hover:bg-indigo-50 transition-colors font-medium"
+            className="text-xs text-accent hover:text-accent px-3 py-1.5 rounded-lg hover:bg-accent-tint transition-colors font-medium"
           >
             本週
           </button>
@@ -345,14 +375,14 @@ function WeekView({ items }: { items: BuildSchedule[] }) {
             key={day.dateStr}
             className={`px-2 py-3 text-center border-r border-gray-100 last:border-r-0 ${
               day.isWeekend ? 'bg-gray-50' : ''
-            } ${day.isToday ? 'bg-indigo-50' : ''}`}
+            } ${day.isToday ? 'bg-accent-tint' : ''}`}
           >
             <p className={`text-xs font-medium mb-0.5 ${day.isWeekend ? 'text-rose-400' : 'text-gray-400'}`}>
               週{day.weekLabel}
             </p>
             <div className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold ${
               day.isToday
-                ? 'bg-indigo-600 text-white'
+                ? 'bg-gray-900 text-white'
                 : day.isWeekend
                 ? 'text-rose-500'
                 : 'text-gray-700'
@@ -373,7 +403,7 @@ function WeekView({ items }: { items: BuildSchedule[] }) {
             key={day.dateStr}
             className={`border-r border-gray-100 last:border-r-0 p-2 ${
               day.isWeekend ? 'bg-gray-50/60' : ''
-            } ${day.isToday ? 'bg-indigo-50/40' : ''}`}
+            } ${day.isToday ? 'bg-accent-tint/40' : ''}`}
           >
             {day.tasks.length === 0 ? (
               <div className="h-full flex items-start justify-center pt-4">
@@ -410,17 +440,17 @@ function WeekView({ items }: { items: BuildSchedule[] }) {
         {days.map(day => {
           const hasTasks = day.tasks.length > 0
           return (
-            <div key={day.dateStr} className={`border-b border-gray-100 last:border-b-0 ${day.isToday ? 'bg-indigo-50/40' : ''}`}>
+            <div key={day.dateStr} className={`border-b border-gray-100 last:border-b-0 ${day.isToday ? 'bg-accent-tint/40' : ''}`}>
               <div className={`flex items-center gap-2.5 px-4 py-2 ${hasTasks ? 'bg-gray-50/60' : 'bg-transparent'}`}>
                 <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                  day.isToday ? 'bg-indigo-600 text-white' : day.isWeekend ? 'text-rose-500' : 'text-gray-500'
+                  day.isToday ? 'bg-gray-900 text-white' : day.isWeekend ? 'text-rose-500' : 'text-gray-500'
                 }`}>
                   {day.dayNum}
                 </div>
                 <span className={`text-xs font-semibold ${day.isWeekend ? 'text-rose-400' : 'text-gray-500'}`}>
                   週{day.weekLabel}
                 </span>
-                {day.isToday && <span className="text-[10px] text-indigo-500 font-medium bg-indigo-100 px-1.5 py-0.5 rounded-full">今天</span>}
+                {day.isToday && <span className="text-[10px] text-accent font-medium bg-accent-tint px-1.5 py-0.5 rounded-full">今天</span>}
                 {hasTasks && (
                   <span className="ml-auto text-[10px] text-gray-400">{day.tasks.length} 項工項</span>
                 )}
@@ -474,6 +504,9 @@ export default function SchedulePage() {
   const [editId, setEditId] = useState<string | null>(null)
   const [form, setForm] = useState<ScheduleForm>(emptyForm())
   const [saving, setSaving] = useState(false)
+  const [showTemplate, setShowTemplate] = useState(false)
+  const [tplStart, setTplStart] = useState(TODAY)
+  const [applying, setApplying] = useState(false)
 
   useEffect(() => { load() }, [id]) // eslint-disable-line
 
@@ -516,6 +549,51 @@ export default function SchedulePage() {
   async function deleteItem(itemId: string) {
     await supabase.from('build_schedules').delete().eq('id', itemId)
     if (expandedId === itemId) setExpandedId(null)
+    load()
+  }
+
+  // 依標準工序範本，從起始日自動排出整條時間軸並寫入
+  async function applyTemplate() {
+    setApplying(true)
+    const stepStart: string[] = []
+    const stepEnd: string[] = []
+    const insertedIds: string[] = []
+
+    for (let i = 0; i < STANDARD_BUILD_TEMPLATE.length; i++) {
+      const step = STANDARD_BUILD_TEMPLATE[i]
+      // 起始日 = 所有前置工項結束日的最晚一天 + 1；無前置則為選定起始日
+      let start = tplStart
+      if (step.deps.length > 0) {
+        const latestDepEnd = step.deps.map(d => stepEnd[d]).sort().slice(-1)[0]
+        start = addDaysStr(latestDepEnd, 1)
+      }
+      const end = addDaysStr(start, Math.max(step.days - 1, 0))
+      stepStart[i] = start
+      stepEnd[i] = end
+
+      // 主要前置 = 結束日最晚的那一項，用來存 depends_on（單一 id）
+      let dependsOnId: string | null = null
+      if (step.deps.length > 0) {
+        const primary = [...step.deps].sort((a, b) => (stepEnd[a] < stepEnd[b] ? -1 : 1)).slice(-1)[0]
+        dependsOnId = insertedIds[primary] ?? null
+      }
+
+      const { data } = await supabase.from('build_schedules').insert({
+        store_id: id,
+        task_name: step.name,
+        vendor: null,
+        start_date: start,
+        end_date: end,
+        status: 'pending',
+        depends_on: dependsOnId,
+        note: null,
+      }).select('id').single()
+
+      insertedIds[i] = data?.id ?? ''
+    }
+
+    setApplying(false)
+    setShowTemplate(false)
     load()
   }
 
@@ -597,6 +675,12 @@ export default function SchedulePage() {
             </div>
           </div>
           <div className="flex gap-2">
+            <button
+              onClick={() => { setTplStart(TODAY); setShowTemplate(true) }}
+              className="px-4 py-2 border border-gray-200 bg-accent-tint text-accent rounded-xl text-sm font-medium hover:bg-accent-tint transition-colors"
+            >
+              套用標準流程
+            </button>
             {items.length > 0 && (
               <button
                 onClick={exportExcel}
@@ -607,7 +691,7 @@ export default function SchedulePage() {
             )}
             <button
               onClick={openAdd}
-              className="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors"
+              className="bg-gray-900 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-gray-800 transition-colors"
             >
               + 新增工項
             </button>
@@ -628,7 +712,7 @@ export default function SchedulePage() {
                 onClick={() => setView(v.key)}
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
                   view === v.key
-                    ? 'bg-gradient-to-r from-indigo-500 to-violet-600 text-white shadow-sm'
+                    ? 'bg-gray-900 text-white shadow-sm'
                     : 'text-gray-500 hover:text-gray-900'
                 }`}
                 style={view === v.key ? { boxShadow: '0 2px 8px rgba(99,102,241,0.3)' } : {}}
@@ -660,13 +744,21 @@ export default function SchedulePage() {
         {items.length === 0 ? (
           <div className="text-center py-24 text-gray-400">
             <p className="text-lg font-medium text-gray-600 mb-1">尚無工項資料</p>
-            <p className="text-sm mb-6">新增工項，追蹤建置進度</p>
-            <button
-              onClick={openAdd}
-              className="bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors"
-            >
-              新增第一個工項
-            </button>
+            <p className="text-sm mb-6">一鍵套用標準建店流程，或手動新增工項</p>
+            <div className="flex items-center justify-center gap-2">
+              <button
+                onClick={() => { setTplStart(TODAY); setShowTemplate(true) }}
+                className="bg-gray-900 text-white px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-800 transition-colors"
+              >
+                套用標準流程
+              </button>
+              <button
+                onClick={openAdd}
+                className="border border-gray-200 bg-white text-gray-600 px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors"
+              >
+                手動新增工項
+              </button>
+            </div>
           </div>
         ) : view === 'week' ? (
           <div className="overflow-x-auto rounded-2xl">
@@ -779,7 +871,7 @@ export default function SchedulePage() {
                 <label className="text-sm font-medium text-gray-700">工項名稱 *</label>
                 <input
                   autoFocus
-                  className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                   value={form.task_name}
                   onChange={e => setForm(f => ({ ...f, task_name: e.target.value }))}
                   placeholder="例：水電配管"
@@ -788,18 +880,18 @@ export default function SchedulePage() {
               <div>
                 <label className="text-sm font-medium text-gray-700">廠商</label>
                 <input
-                  className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                   value={form.vendor}
                   onChange={e => setForm(f => ({ ...f, vendor: e.target.value }))}
                   placeholder="例：○○水電行"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-sm font-medium text-gray-700">開始日期</label>
                   <input
                     type="date"
-                    className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                     value={form.start_date}
                     onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))}
                   />
@@ -808,7 +900,7 @@ export default function SchedulePage() {
                   <label className="text-sm font-medium text-gray-700">結束日期</label>
                   <input
                     type="date"
-                    className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                     value={form.end_date}
                     onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))}
                   />
@@ -817,7 +909,7 @@ export default function SchedulePage() {
               <div>
                 <label className="text-sm font-medium text-gray-700">狀態</label>
                 <select
-                  className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                   value={form.status}
                   onChange={e => setForm(f => ({ ...f, status: e.target.value as ScheduleStatus }))}
                 >
@@ -830,7 +922,7 @@ export default function SchedulePage() {
               <div>
                 <label className="text-sm font-medium text-gray-700">前置工項（選填）</label>
                 <select
-                  className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                   value={form.depends_on}
                   onChange={e => setForm(f => ({ ...f, depends_on: e.target.value }))}
                 >
@@ -846,7 +938,7 @@ export default function SchedulePage() {
                 <label className="text-sm font-medium text-gray-700">備註</label>
                 <textarea
                   rows={3}
-                  className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                  className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent resize-none"
                   value={form.note}
                   onChange={e => setForm(f => ({ ...f, note: e.target.value }))}
                 />
@@ -862,9 +954,61 @@ export default function SchedulePage() {
               <button
                 onClick={save}
                 disabled={!form.task_name || saving}
-                className="flex-1 bg-blue-600 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                className="flex-1 bg-gray-900 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 disabled:opacity-50 transition-colors"
               >
                 {saving ? '儲存中...' : '儲存'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 套用標準流程 Modal */}
+      {showTemplate && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 sm:p-4">
+          <div className="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl p-6 max-h-[90vh] overflow-y-auto">
+            <h3 className="text-lg font-bold text-gray-900 mb-1">套用標準建店流程</h3>
+            <p className="text-sm text-gray-500 mb-4">
+              將依標準工序自動排出 {STANDARD_BUILD_TEMPLATE.length} 項工項的時間軸，之後可自行調整或刪除。
+            </p>
+
+            {items.length > 0 && (
+              <div className="mb-4 px-3 py-2.5 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800">
+                目前已有 {items.length} 項工項，套用後會「新增」在現有工項之後，不會覆蓋。
+              </div>
+            )}
+
+            <label className="text-sm font-medium text-gray-700">建置起始日</label>
+            <input
+              type="date"
+              value={tplStart}
+              onChange={e => setTplStart(e.target.value)}
+              className="mt-1 mb-4 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+            />
+
+            <div className="border border-gray-100 rounded-xl divide-y divide-gray-100 mb-5 max-h-56 overflow-y-auto">
+              {STANDARD_BUILD_TEMPLATE.map((s, i) => (
+                <div key={i} className="flex items-center justify-between px-3 py-2 text-sm">
+                  <span className="text-gray-700">{i + 1}. {s.name}</span>
+                  <span className="text-xs text-gray-400">{s.days > 0 ? `${s.days} 天` : '里程碑'}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowTemplate(false)}
+                disabled={applying}
+                className="flex-1 border border-gray-200 text-gray-600 py-2.5 rounded-xl text-sm hover:bg-gray-50 disabled:opacity-50 transition-colors"
+              >
+                取消
+              </button>
+              <button
+                onClick={applyTemplate}
+                disabled={applying || !tplStart}
+                className="flex-1 bg-gray-900 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 disabled:opacity-50 transition-colors"
+              >
+                {applying ? '產生中...' : '確認套用'}
               </button>
             </div>
           </div>

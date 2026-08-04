@@ -57,7 +57,7 @@ function emptyForm(): LogForm {
 }
 
 const INPUT =
-  'mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
+  'mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent'
 
 export default function LogPage() {
   const { id } = useParams<{ id: string }>()
@@ -218,7 +218,7 @@ export default function LogPage() {
             )}
             <button
               onClick={openAdd}
-              className="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors"
+              className="bg-gray-900 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-gray-800 transition-colors"
             >
               + 新增日誌
             </button>
@@ -250,7 +250,7 @@ export default function LogPage() {
               type="month"
               value={month}
               onChange={e => setMonth(e.target.value)}
-              className="border border-gray-200 bg-white rounded-xl px-3 py-1.5 text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="border border-gray-200 bg-white rounded-xl px-3 py-1.5 text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-accent"
             />
             {month && (
               <button
@@ -266,15 +266,13 @@ export default function LogPage() {
         {/* ── Content ── */}
         {logs.length === 0 ? (
           /* Empty state — no records at all */
-          <div className="text-center py-24 text-gray-400">
-            <p className="text-lg font-medium text-gray-600 mb-1">尚無施工日誌</p>
-            <p className="text-sm mb-6">每天記錄施工進度，完整保留建置過程</p>
-            <button
-              onClick={openAdd}
-              className="bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors"
-            >
-              新增第一筆日誌
-            </button>
+          <div className="text-center py-20">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-accent-tint flex items-center justify-center text-accent">
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.66-.9l.82-1.2A2 2 0 0110.07 4h3.86a2 2 0 011.66.9l.82 1.2a2 2 0 001.66.9H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><circle cx="12" cy="13" r="3" /></svg>
+            </div>
+            <p className="text-lg font-semibold text-gray-800 mb-1">記錄工地的每一天</p>
+            <p className="text-sm text-gray-400 mb-6">拍下今天的進度，日後回頭看就是完整的建置歷程</p>
+            <button onClick={openAdd} className="lp-btn-primary px-5 py-2.5 text-sm">＋ 新增第一筆日誌</button>
           </div>
         ) : filtered.length === 0 ? (
           /* Empty state — filters yield nothing */
@@ -338,7 +336,7 @@ export default function LogPage() {
                   placeholder="例：廚房水電配管"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-sm font-medium text-gray-700">廠商 / 工班</label>
                   <input
@@ -380,7 +378,7 @@ export default function LogPage() {
                 <label className="text-sm font-medium text-gray-700">今日施工進度</label>
                 <textarea
                   rows={4}
-                  className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                  className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent resize-none"
                   value={form.progress}
                   onChange={e => setForm(f => ({ ...f, progress: e.target.value }))}
                   placeholder="例：完成廚房設備定位，開始配管"
@@ -401,10 +399,10 @@ export default function LogPage() {
                     />
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-blue-600">處理措施</label>
+                    <label className="text-sm font-medium text-accent">處理措施</label>
                     <textarea
                       rows={3}
-                      className="mt-1 w-full border border-blue-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
+                      className="mt-1 w-full border border-accent-tint rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent resize-none"
                       value={form.action}
                       onChange={e => setForm(f => ({ ...f, action: e.target.value }))}
                       placeholder="說明已採取或計劃的處理方式..."
@@ -447,7 +445,7 @@ export default function LogPage() {
               <button
                 onClick={save}
                 disabled={!form.date || saving}
-                className="flex-1 bg-blue-600 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                className="flex-1 bg-gray-900 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 disabled:opacity-50 transition-colors"
               >
                 {saving ? '儲存中...' : '儲存'}
               </button>
@@ -470,7 +468,8 @@ function LogCard({
   onDelete: () => void
 }) {
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 p-5 group hover:shadow-sm transition-shadow">
+    <div className="lp-card lp-card-hover overflow-hidden group">
+      <div className="p-5">
       {/* Top row: date + meta + badge + actions */}
       <div className="flex items-start justify-between gap-3 mb-3">
         <div className="flex items-center gap-3 flex-wrap">
@@ -500,7 +499,7 @@ function LogCard({
           <div className="flex gap-1 transition-opacity">
             <button
               onClick={onEdit}
-              className="text-xs text-blue-500 hover:text-blue-700 px-2 py-1"
+              className="text-xs text-accent hover:text-accent px-2 py-1"
             >
               編輯
             </button>
@@ -546,16 +545,9 @@ function LogCard({
 
       {/* Action box */}
       {log.status === 'issue' && log.action && (
-        <div className="mb-2 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
-          <p className="text-xs font-semibold text-blue-500 mb-1">處理措施</p>
-          <p className="text-sm text-blue-700 whitespace-pre-wrap leading-relaxed">{log.action}</p>
-        </div>
-      )}
-
-      {/* Photos */}
-      {log.photos?.length > 0 && (
-        <div className="mt-3 pt-3 border-t border-gray-100">
-          <LogPhotoStrip photos={log.photos} />
+        <div className="mb-2 bg-accent-tint border border-accent-tint rounded-xl px-4 py-3">
+          <p className="text-xs font-semibold text-accent mb-1">處理措施</p>
+          <p className="text-sm text-accent whitespace-pre-wrap leading-relaxed">{log.action}</p>
         </div>
       )}
 
@@ -565,42 +557,47 @@ function LogCard({
           {log.note}
         </p>
       )}
+      </div>
+
+      {/* Photos — 滿版格狀 */}
+      {log.photos?.length > 0 && <LogPhotoStrip photos={log.photos} />}
     </div>
   )
 }
 
 function LogPhotoStrip({ photos }: { photos: string[] }) {
-  const [lightbox, setLightbox] = useState<string | null>(null)
+  const [idx, setIdx] = useState<number | null>(null)
+  const shown = photos.slice(0, 6)
   return (
     <>
-      <div className="flex gap-2 flex-wrap">
-        {photos.map(url => (
-          <img
-            key={url}
-            src={url}
-            alt=""
-            onClick={() => setLightbox(url)}
-            className="w-16 h-16 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity"
-          />
+      <div className="grid grid-cols-3 gap-0.5">
+        {shown.map((url, i) => (
+          <button key={url} onClick={() => setIdx(i)} className="relative aspect-square overflow-hidden bg-gray-100">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={url} alt="現場照片" className="w-full h-full object-cover hover:opacity-90 transition-opacity" />
+            {i === 5 && photos.length > 6 && (
+              <div className="absolute inset-0 bg-black/55 flex items-center justify-center text-white text-lg font-semibold">+{photos.length - 6}</div>
+            )}
+          </button>
         ))}
       </div>
-      {lightbox && (
-        <div
-          className="fixed inset-0 bg-black/80 flex items-center justify-center z-[200] p-4"
-          onClick={() => setLightbox(null)}
-        >
-          <img
-            src={lightbox}
-            alt=""
-            className="max-w-full max-h-full object-contain rounded-xl shadow-2xl"
-            onClick={e => e.stopPropagation()}
-          />
-          <button
-            onClick={() => setLightbox(null)}
-            className="absolute top-4 right-4 text-white text-xl w-10 h-10 flex items-center justify-center rounded-full bg-black/50 hover:bg-black/70"
-          >
-            ✕
+      {idx !== null && photos[idx] && (
+        <div className="fixed inset-0 bg-black/85 flex items-center justify-center z-[200] p-4" onClick={() => setIdx(null)}>
+          <button onClick={() => setIdx(null)} className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full bg-white/15 text-white hover:bg-white/25" aria-label="關閉">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" /></svg>
           </button>
+          {idx > 0 && (
+            <button onClick={e => { e.stopPropagation(); setIdx(v => v! - 1) }} className="absolute left-3 sm:left-6 w-10 h-10 flex items-center justify-center rounded-full bg-white/15 text-white hover:bg-white/25" aria-label="上一張">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 5l-7 7 7 7" /></svg>
+            </button>
+          )}
+          {idx < photos.length - 1 && (
+            <button onClick={e => { e.stopPropagation(); setIdx(v => v! + 1) }} className="absolute right-3 sm:right-6 w-10 h-10 flex items-center justify-center rounded-full bg-white/15 text-white hover:bg-white/25" aria-label="下一張">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+            </button>
+          )}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={photos[idx]} alt="現場照片" className="max-w-full max-h-full object-contain rounded-xl" onClick={e => e.stopPropagation()} />
         </div>
       )}
     </>

@@ -57,7 +57,7 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-gradient-to-br from-blue-900 via-blue-800 to-blue-900" style={{ boxShadow: '0 4px 24px 0 rgba(249,115,22,0.45)' }}>
+      <header className="bg-gray-900" style={{ boxShadow: '0 4px 24px 0 rgba(249,115,22,0.45)' }}>
         <div className="max-w-lg mx-auto px-6 py-5 flex items-center gap-3">
           <Link href="/" className="text-white/60 hover:text-white transition-colors">
             <svg width="16" height="16" viewBox="0 0 12 12" fill="none">
@@ -76,7 +76,7 @@ export default function ProfilePage() {
 
           {/* Avatar */}
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-400 to-violet-500 flex items-center justify-center shadow-lg">
+            <div className="w-14 h-14 rounded-2xl bg-gray-900 flex items-center justify-center shadow-lg">
               <span className="text-white text-xl font-bold leading-none">
                 {(displayName || user?.email || '?')[0]?.toUpperCase()}
               </span>
@@ -97,7 +97,7 @@ export default function ProfilePage() {
               顯示名稱
             </label>
             <input
-              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 transition-all"
+              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-accent transition-all"
               placeholder="輸入你的名稱"
               value={displayName}
               onChange={e => setDisplayName(e.target.value)}
@@ -107,7 +107,7 @@ export default function ProfilePage() {
           <button
             onClick={save}
             disabled={saving}
-            className="w-full bg-gradient-to-r from-orange-500 to-amber-400 text-white py-3 rounded-xl text-sm font-bold hover:from-orange-600 hover:to-amber-500 disabled:opacity-40 transition-all"
+            className="w-full bg-gray-900 text-white py-3 rounded-xl text-sm font-bold hover:bg-gray-800 disabled:opacity-40 transition-all"
             style={{ boxShadow: '0 4px 16px 0 rgba(249,115,22,0.45)' }}
           >
             {saving ? '儲存中...' : saved ? '✓ 已儲存' : '儲存'}
@@ -122,7 +122,7 @@ export default function ProfilePage() {
             <div className="relative">
               <input
                 type={showNewPw ? 'text' : 'password'}
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 pr-11 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 transition-all"
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 pr-11 text-sm focus:outline-none focus:ring-2 focus:ring-accent transition-all"
                 placeholder="至少 6 個字元"
                 value={newPassword}
                 onChange={e => setNewPassword(e.target.value)}
@@ -142,7 +142,7 @@ export default function ProfilePage() {
             <div className="relative">
               <input
                 type={showConfirmPw ? 'text' : 'password'}
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 pr-11 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 transition-all"
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 pr-11 text-sm focus:outline-none focus:ring-2 focus:ring-accent transition-all"
                 placeholder="再輸入一次"
                 value={confirmPassword}
                 onChange={e => setConfirmPassword(e.target.value)}
@@ -166,7 +166,7 @@ export default function ProfilePage() {
           <button
             onClick={changePassword}
             disabled={pwSaving || !newPassword || !confirmPassword}
-            className="w-full bg-gradient-to-r from-orange-500 to-amber-400 text-white py-3 rounded-xl text-sm font-bold hover:from-orange-600 hover:to-amber-500 disabled:opacity-40 transition-all"
+            className="w-full bg-gray-900 text-white py-3 rounded-xl text-sm font-bold hover:bg-gray-800 disabled:opacity-40 transition-all"
             style={{ boxShadow: '0 4px 16px 0 rgba(249,115,22,0.45)' }}
           >
             {pwSaving ? '更新中...' : '更新密碼'}

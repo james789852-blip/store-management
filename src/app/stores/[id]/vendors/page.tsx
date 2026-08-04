@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import type { Vendor } from '@/types'
+import VendorQuotes from '@/components/VendorQuotes'
 
 const CATEGORY_OPTIONS = ['水電', '木工', '泥作', '設備', '設計', '招牌', '印刷', '清潔', '其他']
 const PAY_METHOD_OPTIONS = ['現金', '轉帳', '支票']
@@ -122,7 +123,7 @@ function Field({
 }
 
 const inputCls =
-  'w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
+  'w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent'
 
 export default function VendorsPage() {
   const { id } = useParams<{ id: string }>()
@@ -136,10 +137,47 @@ export default function VendorsPage() {
   const [saving, setSaving] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState(false)
   const [copied, setCopied] = useState<string | null>(null)
+  const [showImport, setShowImport] = useState(false)
+  const [otherVendors, setOtherVendors] = useState<(Vendor & { storeName?: string })[]>([])
+  const [importBusyId, setImportBusyId] = useState<string | null>(null)
 
   useEffect(() => {
     load()
   }, [id])
+
+  async function openImport() {
+    setShowImport(true)
+    const { data } = await supabase.from('vendors').select('*').neq('store_id', id).not('store_id', 'is', null).order('name')
+    const list = (data || []) as Vendor[]
+    const storeIds = Array.from(new Set(list.map(v => v.store_id).filter(Boolean))) as string[]
+    const nameMap: Record<string, string> = {}
+    if (storeIds.length) {
+      const { data: s } = await supabase.from('stores').select('id, name').in('id', storeIds)
+      ;(s as { id: string; name: string }[] | null)?.forEach(r => { nameMap[r.id] = r.name })
+    }
+    // 同名廠商在本店已存在的就不重複顯示
+    const existing = new Set(vendors.map(v => v.name))
+    const seen = new Set<string>()
+    const dedup = list.filter(v => {
+      if (existing.has(v.name) || seen.has(v.name)) return false
+      seen.add(v.name); return true
+    }).map(v => ({ ...v, storeName: v.store_id ? nameMap[v.store_id] : undefined }))
+    setOtherVendors(dedup)
+  }
+
+  async function importVendor(v: Vendor) {
+    setImportBusyId(v.id)
+    await supabase.from('vendors').insert({
+      store_id: id,
+      name: v.name, category: v.category, service: v.service, contact_name: v.contact_name,
+      phone: v.phone, mobile: v.mobile, email: v.email, address: v.address, tax_id: v.tax_id,
+      line_id: v.line_id, pay_method: v.pay_method, bank_name: v.bank_name, bank_account: v.bank_account,
+      can_invoice: v.can_invoice, invoice_note: v.invoice_note, note: v.note,
+    })
+    setImportBusyId(null)
+    setOtherVendors(prev => prev.filter(x => x.id !== v.id))
+    load()
+  }
 
   async function load() {
     setLoading(true)
@@ -271,7 +309,13 @@ export default function VendorsPage() {
         <div className="flex flex-wrap items-center justify-between gap-3 mb-5 sm:mb-8">
           <div>
             <h1 className="text-xl sm:text-2xl font-bold text-gray-900">廠商資料</h1>
-            <p className="text-sm text-gray-400 mt-0.5">共 {vendors.length} 間廠商</p>
+            <p className="text-sm text-gray-400 mt-0.5">
+              共 {vendors.length} 間廠商
+              {(() => {
+                const incomplete = vendors.filter(v => !v.phone && !v.mobile && !v.line_id).length
+                return incomplete > 0 ? <span className="text-brand-red"> · {incomplete} 間缺聯絡方式</span> : null
+              })()}
+            </p>
           </div>
           <div className="flex gap-2">
             {vendors.length > 0 && (
@@ -283,8 +327,14 @@ export default function VendorsPage() {
               </button>
             )}
             <button
+              onClick={openImport}
+              className="px-4 py-2 border border-gray-200 bg-white rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition-colors"
+            >
+              從其他店加入
+            </button>
+            <button
               onClick={openAdd}
-              className="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-blue-700 transition-colors"
+              className="bg-gray-900 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors"
             >
               + 新增廠商
             </button>
@@ -300,7 +350,7 @@ export default function VendorsPage() {
                 onClick={() => setCategoryFilter(cat)}
                 className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
                   categoryFilter === cat
-                    ? 'bg-blue-600 text-white'
+                    ? 'bg-gray-900 text-white'
                     : 'bg-white border border-gray-200 text-gray-600 hover:border-gray-300'
                 }`}
               >
@@ -312,9 +362,12 @@ export default function VendorsPage() {
 
         {/* Vendor grid */}
         {filtered.length === 0 ? (
-          <div className="text-center py-20 text-gray-400">
-            <p className="text-lg font-medium text-gray-600 mb-1">尚無廠商資料</p>
-            <p className="text-sm">建立廠商資料庫，方便日後聯絡</p>
+          <div className="text-center py-20">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-accent-tint flex items-center justify-center text-accent">
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-4h6v4M9 10h.01M15 10h.01M9 13h.01M15 13h.01" /></svg>
+            </div>
+            <p className="text-lg font-semibold text-gray-800 mb-1">還沒有廠商</p>
+            <p className="text-sm text-gray-400">把配合的水電、木工、設備廠商建進來，或從其他店加入</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -324,7 +377,7 @@ export default function VendorsPage() {
                 <div
                   key={v.id}
                   onClick={() => setDetailVendor(v)}
-                  className="bg-white rounded-2xl border border-gray-200 p-5 hover:shadow-md hover:border-gray-300 transition-all cursor-pointer flex flex-col"
+                  className="lp-card lp-card-hover p-5 cursor-pointer flex flex-col"
                 >
                   {/* Card header: avatar + name + category */}
                   <div className="flex items-start gap-3 mb-3">
@@ -573,6 +626,40 @@ export default function VendorsPage() {
                   <p className="text-sm text-gray-600 whitespace-pre-wrap bg-gray-50 rounded-xl p-3">{detailVendor.note}</p>
                 </div>
               )}
+
+              {/* 歷史報價 */}
+              <div className="border-t border-gray-100 pt-4">
+                <VendorQuotes vendorId={detailVendor.id} storeId={id} />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 從其他店加入 Modal */}
+      {showImport && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 sm:p-4" onClick={e => { if (e.target === e.currentTarget) setShowImport(false) }}>
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg overflow-hidden" style={{ boxShadow: 'var(--shadow-lg)' }}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+              <div>
+                <h2 className="font-bold text-gray-900 text-lg">從其他店加入廠商</h2>
+                <p className="text-xs text-gray-400 mt-0.5">把別間店用過的廠商複製到這間店</p>
+              </div>
+              <button onClick={() => setShowImport(false)} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+            </div>
+            <div className="max-h-[65vh] overflow-y-auto p-3">
+              {otherVendors.length === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-10">其他店沒有可加入的廠商</p>
+              ) : otherVendors.map(v => (
+                <div key={v.id} className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition-colors">
+                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-sm font-bold shrink-0 ${avatarColor(v.category).bg} ${avatarColor(v.category).text}`}>{v.name.charAt(0)}</div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-900 truncate">{v.name}</p>
+                    <p className="text-xs text-gray-400 truncate">{[v.category, v.service, v.storeName ? `來自 ${v.storeName}` : ''].filter(Boolean).join(' · ')}</p>
+                  </div>
+                  <button onClick={() => importVendor(v)} disabled={importBusyId === v.id} className="lp-btn-primary px-3 py-1.5 text-xs shrink-0">{importBusyId === v.id ? '加入中…' : '加入'}</button>
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -764,7 +851,7 @@ export default function VendorsPage() {
                 <button
                   onClick={save}
                   disabled={!form.name.trim() || saving}
-                  className="bg-blue-600 text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                  className="bg-gray-900 text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 disabled:opacity-50 transition-colors"
                 >
                   {saving ? '儲存中...' : '儲存'}
                 </button>

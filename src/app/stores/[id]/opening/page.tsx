@@ -335,7 +335,7 @@ export default function OpeningPage() {
               </button>
               <button
                 onClick={() => openAddItem()}
-                className="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors"
+                className="bg-gray-900 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-gray-800 transition-colors"
               >
                 + 新增項目
               </button>
@@ -343,7 +343,7 @@ export default function OpeningPage() {
           </div>
 
           {/* Progress card */}
-          <div className={`rounded-2xl p-5 text-white mb-4 ${allDone ? 'bg-gradient-to-r from-teal-500 to-green-500' : 'bg-gradient-to-r from-blue-600 to-indigo-600'}`}>
+          <div className={`rounded-2xl p-5 text-white mb-4 ${allDone ? 'bg-gray-900' : 'bg-gray-900'}`}>
             <div className="flex items-center justify-between mb-3">
               <div>
                 <p className="text-white/80 text-sm">整體準備進度</p>
@@ -451,7 +451,7 @@ export default function OpeningPage() {
                                 <div className="mt-2 flex gap-2">
                                   <input
                                     autoFocus
-                                    className="flex-1 text-xs border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                    className="flex-1 text-xs border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-accent"
                                     value={noteVal}
                                     onChange={e => setNoteVal(e.target.value)}
                                     onCompositionStart={() => { isComposing.current = true }}
@@ -522,7 +522,7 @@ export default function OpeningPage() {
                     {isRenaming ? (
                       <input
                         autoFocus
-                        className="flex-1 text-sm border border-blue-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="flex-1 text-sm border border-blue-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-accent"
                         value={renameVal}
                         onChange={e => setRenameVal(e.target.value)}
                         onKeyDown={e => {
@@ -569,7 +569,7 @@ export default function OpeningPage() {
               {/* Add new category */}
               <div className="flex gap-2 pt-3 border-t border-gray-100">
                 <input
-                  className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                   placeholder="新分類名稱..."
                   value={newCatVal}
                   onChange={e => setNewCatVal(e.target.value)}
@@ -578,7 +578,7 @@ export default function OpeningPage() {
                 <button
                   onClick={addCat}
                   disabled={!newCatVal.trim() || catDraft.includes(newCatVal.trim())}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 disabled:opacity-40 transition-colors"
+                  className="px-4 py-2 bg-gray-900 text-white rounded-xl text-sm font-medium hover:bg-gray-800 disabled:opacity-40 transition-colors"
                 >
                   新增
                 </button>
@@ -590,7 +590,7 @@ export default function OpeningPage() {
               <button
                 onClick={applyCategories}
                 disabled={savingCat}
-                className="flex-1 bg-blue-600 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 disabled:opacity-50"
+                className="flex-1 bg-gray-900 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 disabled:opacity-50"
               >
                 {savingCat ? '儲存中...' : '套用'}
               </button>
@@ -611,7 +611,7 @@ export default function OpeningPage() {
                 <label className="text-sm font-medium text-gray-700">項目名稱 *</label>
                 <input
                   autoFocus
-                  className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                   value={itemForm.name}
                   onChange={e => setItemForm(f => ({ ...f, name: e.target.value }))}
                   placeholder="例：試營運演練"
@@ -621,7 +621,7 @@ export default function OpeningPage() {
                 <label className="text-sm font-medium text-gray-700">說明</label>
                 <textarea
                   rows={4}
-                  className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                  className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent resize-none"
                   value={itemForm.description}
                   onChange={e => setItemForm(f => ({ ...f, description: e.target.value }))}
                   placeholder="補充說明或注意事項"
@@ -630,7 +630,7 @@ export default function OpeningPage() {
               <div>
                 <label className="text-sm font-medium text-gray-700">分類</label>
                 <select
-                  className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                   value={itemForm.category}
                   onChange={e => setItemForm(f => ({ ...f, category: e.target.value }))}
                 >
@@ -655,7 +655,7 @@ export default function OpeningPage() {
               <button
                 onClick={saveItem}
                 disabled={!itemForm.name || savingItem}
-                className="flex-1 bg-blue-600 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 disabled:opacity-50"
+                className="flex-1 bg-gray-900 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 disabled:opacity-50"
               >
                 {savingItem ? '儲存中...' : '儲存'}
               </button>

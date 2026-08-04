@@ -158,7 +158,7 @@ export default function DocumentsPage() {
   const countByStatus = (status: DocStatus) => docs.filter(d => d.status === status).length
   const urgentDocs = docs.filter(d => d.status === 'expiring' || d.status === 'expired')
 
-  const inputCls = 'mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
+  const inputCls = 'mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent'
   const labelCls = 'text-xs font-medium text-gray-600'
 
   if (loading) return <div className="flex items-center justify-center py-32 text-gray-400">載入中...</div>
@@ -196,7 +196,7 @@ export default function DocumentsPage() {
           </div>
           <button
             onClick={openAdd}
-            className="mt-1 bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors">
+            className="mt-1 bg-gray-900 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-gray-800 transition-colors">
             + 新增文件
           </button>
         </div>
@@ -228,7 +228,7 @@ export default function DocumentsPage() {
               <button
                 key={val}
                 onClick={() => setTypeFilter(val as DocTypeFilter)}
-                className={`px-4 py-2 text-sm transition-colors ${typeFilter === val ? 'bg-blue-600 text-white' : 'text-gray-500 hover:bg-gray-50'}`}>
+                className={`px-4 py-2 text-sm transition-colors ${typeFilter === val ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-50'}`}>
                 {label}
               </button>
             ))}
@@ -237,13 +237,16 @@ export default function DocumentsPage() {
 
         {/* Empty state */}
         {docs.length === 0 ? (
-          <div className="text-center py-20 text-gray-400">
-            <p className="text-lg font-medium text-gray-600 mb-1">尚無文件記錄</p>
-            <p className="text-sm mb-6">點擊「新增文件」開始管理門市相關文件</p>
+          <div className="text-center py-16">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-accent-tint flex items-center justify-center text-accent">
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" /></svg>
+            </div>
+            <p className="text-lg font-semibold text-gray-800 mb-1">還沒有文件</p>
+            <p className="text-sm text-gray-400 mb-6">租約、同意書、證照集中一處，到期不漏接</p>
             <button
               onClick={createTemplates}
               disabled={creatingTemplates}
-              className="bg-gray-700 text-white px-6 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-800 disabled:opacity-50 transition-colors">
+              className="lp-btn-primary px-6 py-2.5 text-sm">
               {creatingTemplates ? '建立中...' : '一鍵建立常用文件'}
             </button>
             <p className="text-xs text-gray-400 mt-3">將新增：房屋租賃契約、房東同意書、使用執照、消防安全設施申報、營業登記</p>
@@ -303,7 +306,7 @@ export default function DocumentsPage() {
                           href={doc.file_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 mt-2 text-xs text-blue-600 bg-blue-50 hover:bg-blue-100 active:bg-blue-200 px-3 py-1.5 rounded-lg font-medium transition-colors">
+                          className="inline-flex items-center gap-1.5 mt-2 text-xs text-accent bg-accent-tint hover:bg-accent-tint active:bg-accent-tint px-3 py-1.5 rounded-lg font-medium transition-colors">
                           <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                           </svg>
@@ -321,7 +324,7 @@ export default function DocumentsPage() {
                     <div className="flex gap-1 transition-opacity shrink-0">
                       <button
                         onClick={() => startEdit(doc)}
-                        className="text-xs text-blue-500 hover:text-blue-700 px-2 py-1">
+                        className="text-xs text-accent hover:text-accent px-2 py-1">
                         編輯
                       </button>
                       <button
@@ -357,7 +360,7 @@ export default function DocumentsPage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className={labelCls}>文件類型</label>
                     <select
@@ -395,7 +398,7 @@ export default function DocumentsPage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className={labelCls}>簽署日期</label>
                     <input
@@ -413,7 +416,7 @@ export default function DocumentsPage() {
                     <div className="flex items-center gap-2 mt-1">
                       <input
                         type="date"
-                        className="flex-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-400"
+                        className="flex-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-gray-50 disabled:text-gray-400"
                         value={form.exp_date}
                         disabled={form.exp_date === 'none'}
                         onChange={e => setForm(f => ({ ...f, exp_date: e.target.value }))}
@@ -471,7 +474,7 @@ export default function DocumentsPage() {
                 <button
                   onClick={save}
                   disabled={!form.name || saving}
-                  className="flex-1 bg-blue-600 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                  className="flex-1 bg-gray-900 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 disabled:opacity-50 transition-colors">
                   {saving ? '儲存中...' : '儲存'}
                 </button>
               </div>

@@ -50,6 +50,7 @@ export interface Store {
   total_budget: number | null
   price_per_sqft: number | null
   total_valuation: number | null
+  cover_photo: string | null
   notes: string | null
   created_at: string
   updated_at: string
@@ -266,7 +267,9 @@ export interface Equipment {
   unit_price: number | null
   vendor: string | null
   status: EquipmentStatus
+  condition: string | null
   schedule_task: string | null
+  photos: string[]
   note: string | null
   created_at: string
   updated_at: string
@@ -407,3 +410,74 @@ export interface OpeningChecklistItem {
 export const OPENING_CHECKLIST_CATEGORIES = [
   '證照與行政', '工程驗收', '設備與系統', '人員準備', '備品與食材', '行銷與品牌'
 ] as const
+
+// ── Monthly Reports ───────────────────────────────────────────
+export interface MonthlyReport {
+  id: string
+  store_id: string
+  year: number
+  month: number
+  revenue: number
+  total_cost: number
+  net_profit: number
+  note: string | null
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+// ── Share Transfers ───────────────────────────────────────────
+export type TransferStatus = 'open' | 'pending_lottery' | 'completed' | 'cancelled'
+
+export interface ShareTransfer {
+  id: string
+  store_id: string
+  investor_id: string
+  seller_name: string
+  percentage: number
+  asking_price: number
+  status: TransferStatus
+  winner_applicant_id: string | null
+  note: string | null
+  created_at: string
+  updated_at: string
+  transfer_applicants?: TransferApplicant[]
+}
+
+export interface TransferApplicant {
+  id: string
+  transfer_id: string
+  name: string
+  email: string | null
+  phone: string | null
+  note: string | null
+  is_winner: boolean
+  created_at: string
+}
+
+// ── Store Staff（管理人員:店長 / 副店長…可多位）──────────────────
+export interface StoreStaff {
+  id: string
+  store_id: string
+  title: string | null
+  name: string
+  id_number: string | null
+  email: string | null
+  phone: string | null
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
+// ── Store Payments（支付方式:抽成 % + 撥款規則）─────────────────
+export interface StorePayment {
+  id: string
+  store_id: string
+  method: string
+  commission_pct: number | null
+  settlement_rule: string | null
+  note: string | null
+  sort_order: number
+  created_at: string
+  updated_at: string
+}

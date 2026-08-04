@@ -472,7 +472,7 @@ export default function InvestorsPage() {
               ↓ Excel
             </button>
             <button onClick={() => openAdd()}
-              className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-colors">
+              className="bg-gray-900 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors">
               + 新增股東
             </button>
           </div>
@@ -705,7 +705,7 @@ export default function InvestorsPage() {
                   <button
                     onClick={() => sendContracts(true)}
                     disabled={sending || !investors.some(i => i.email && i.contract_url && !i.contract_sent)}
-                    className="bg-indigo-600 text-white px-4 py-1.5 rounded-lg text-xs font-bold hover:bg-indigo-700 disabled:opacity-40 transition-colors"
+                    className="bg-gray-900 text-white px-4 py-1.5 rounded-lg text-xs font-bold hover:bg-gray-800 disabled:opacity-40 transition-colors"
                   >
                     {sending ? '寄送中...' : `一鍵寄給未寄出（${investors.filter(i => i.email && i.contract_url && !i.contract_sent).length} 位）`}
                   </button>
@@ -753,18 +753,18 @@ export default function InvestorsPage() {
               <div className="flex flex-wrap items-end gap-3">
                 <div>
                   <label className="text-xs text-gray-500 block mb-1">繳款期限</label>
-                  <input type="date" className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                  <input type="date" className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                     value={batchDeadline} onChange={e => setBatchDeadline(e.target.value)} />
                 </div>
                 <div>
                   <label className="text-xs text-gray-500 block mb-1">合約日</label>
-                  <input type="date" className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                  <input type="date" className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                     value={batchSignDate} onChange={e => setBatchSignDate(e.target.value)} />
                 </div>
                 <button
                   onClick={applyBatchDates}
                   disabled={applyingBatch || (!batchDeadline && !batchSignDate)}
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-semibold hover:bg-indigo-700 disabled:opacity-40 transition-colors"
+                  className="px-4 py-2 bg-gray-900 text-white rounded-xl text-sm font-semibold hover:bg-gray-800 disabled:opacity-40 transition-colors"
                 >
                   {applyingBatch ? '套用中...' : '套用到所有人'}
                 </button>
@@ -843,7 +843,7 @@ export default function InvestorsPage() {
                               <button onClick={() => sendGroup(g)}
                                 disabled={!g.email || !g.contractUrl || sendingId === g.key}
                                 title={!g.email ? '無 Email' : !g.contractUrl ? '未上傳合約' : ''}
-                                className={`text-xs px-2.5 py-1 rounded-lg font-medium transition-colors disabled:opacity-50 ${g.email && g.contractUrl ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}>
+                                className={`text-xs px-2.5 py-1 rounded-lg font-medium transition-colors disabled:opacity-50 ${g.email && g.contractUrl ? 'bg-gray-900 text-white hover:bg-gray-800' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}>
                                 {sendingId === g.key ? '寄送中' : '寄出'}
                               </button>
                               )}
@@ -971,7 +971,7 @@ export default function InvestorsPage() {
                   <label className="text-sm font-semibold text-gray-700">{label}</label>
                   <p className="text-xs text-gray-400 mb-1">{hint}</p>
                   <input type="number" min="0" step="1"
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                     value={rcDraft[key] || ''}
                     onChange={e => setRcDraft(d => ({ ...d, [key]: parseInt(e.target.value) || 0 }))}
                     placeholder="0（填 0 表示不開放此輪）"
@@ -994,7 +994,7 @@ export default function InvestorsPage() {
             <div className="flex gap-2 px-5 sm:px-6 pb-5 sm:pb-6">
               <button onClick={() => setShowSettings(false)} className="flex-1 border border-gray-200 rounded-xl py-2.5 text-sm text-gray-600 hover:bg-gray-50">取消</button>
               <button onClick={saveRoundConfig} disabled={savingRc}
-                className="flex-1 bg-indigo-600 text-white rounded-xl py-2.5 text-sm font-bold hover:bg-indigo-700 disabled:opacity-50">
+                className="flex-1 bg-gray-900 text-white rounded-xl py-2.5 text-sm font-bold hover:bg-gray-800 disabled:opacity-50">
                 {savingRc ? '儲存中...' : '儲存設定'}
               </button>
             </div>
@@ -1029,7 +1029,7 @@ export default function InvestorsPage() {
                 <div className="bg-indigo-50 rounded-xl p-3">
                   <label className="text-xs font-semibold text-indigo-700">從第一輪投資人選擇（自動帶入個人資料）</label>
                   <select
-                    className="mt-1 w-full border border-indigo-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                    className="mt-1 w-full border border-indigo-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-accent"
                     value={r1SourceId}
                     onChange={e => {
                       const selected = investors.find(i => i.id === e.target.value)
@@ -1053,10 +1053,10 @@ export default function InvestorsPage() {
                   </select>
                 </div>
               )}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="col-span-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="col-span-full">
                   <label className="text-xs font-semibold text-gray-700">姓名 *</label>
-                  <input className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                  <input className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                     value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
                     onCompositionStart={() => { isComposing.current = true }}
                     onCompositionEnd={() => { isComposing.current = false }}
@@ -1064,7 +1064,7 @@ export default function InvestorsPage() {
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-gray-700">輪次</label>
-                  <select className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white"
+                  <select className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent bg-white"
                     value={form.round} onChange={e => setForm(f => ({ ...f, round: e.target.value }))}>
                     {ROUND_META.map(m => (
                       <option key={m.round} value={m.round}>{m.label}（{m.sub}）</option>
@@ -1074,7 +1074,7 @@ export default function InvestorsPage() {
                 <div>
                   <label className="text-xs font-semibold text-gray-700">持股 %</label>
                   <input type="number" step="0.01" min="0"
-                    className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                    className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                     value={form.percentage} onChange={e => setForm(f => ({ ...f, percentage: e.target.value }))}
                     placeholder="0.00" />
                   {maxForThisRound > 0 && (
@@ -1089,27 +1089,27 @@ export default function InvestorsPage() {
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-gray-700">電話</label>
-                  <input className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                  <input className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                     value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} />
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-gray-700">Email</label>
-                  <input type="email" className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                  <input type="email" className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                     value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-gray-700">身分證字號</label>
-                  <input className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                  <input className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                     value={form.id_number} onChange={e => setForm(f => ({ ...f, id_number: e.target.value }))} />
                 </div>
-                <div className="col-span-2">
+                <div className="col-span-full">
                   <label className="text-xs font-semibold text-gray-700">地址</label>
-                  <input className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                  <input className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                     value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} />
                 </div>
-                <div className="col-span-2">
+                <div className="col-span-full">
                   <label className="text-xs font-semibold text-gray-700">備註</label>
-                  <textarea rows={2} className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 resize-none"
+                  <textarea rows={2} className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent resize-none"
                     value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} />
                 </div>
               </div>
@@ -1117,7 +1117,7 @@ export default function InvestorsPage() {
             <div className="px-5 sm:px-6 py-4 border-t border-gray-100 flex gap-2">
               <button onClick={() => setShowModal(false)} className="flex-1 border border-gray-200 rounded-xl py-2.5 text-sm text-gray-600 hover:bg-gray-50">取消</button>
               <button onClick={save} disabled={saving || !form.name.trim()}
-                className="flex-1 bg-indigo-600 text-white rounded-xl py-2.5 text-sm font-bold hover:bg-indigo-700 disabled:opacity-50">
+                className="flex-1 bg-gray-900 text-white rounded-xl py-2.5 text-sm font-bold hover:bg-gray-800 disabled:opacity-50">
                 {saving ? '儲存中...' : '儲存'}
               </button>
             </div>

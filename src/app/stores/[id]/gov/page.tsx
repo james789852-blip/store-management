@@ -257,7 +257,7 @@ export default function GovPage() {
         </div>
         <button
           onClick={openAdd}
-          className="shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+          className="shrink-0 bg-gray-900 hover:bg-gray-800 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
         >
           ＋ 新增申請項目
         </button>
@@ -266,12 +266,12 @@ export default function GovPage() {
       {/* ── Empty state ── */}
       {total === 0 && (
         <div className="bg-white rounded-2xl border border-dashed border-gray-300 p-12 text-center">
-          <p className="text-gray-400 mb-2">尚無申請項目</p>
-          <p className="text-gray-400 text-sm mb-6">點選下方按鈕快速建立台灣餐飲業常見申請清單</p>
-          <button
-            onClick={seedDefaults}
-            className="bg-green-600 hover:bg-green-700 text-white text-sm font-medium px-5 py-2.5 rounded-lg transition-colors"
-          >
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-accent-tint flex items-center justify-center text-accent">
+            <svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          </div>
+          <p className="text-lg font-semibold text-gray-800 mb-1">還沒有申請項目</p>
+          <p className="text-gray-400 text-sm mb-6">一鍵帶入台灣餐飲業常見的證照與申請清單，照著辦不漏件</p>
+          <button onClick={seedDefaults} className="lp-btn-primary px-5 py-2.5 text-sm">
             一鍵建立常用申請
           </button>
         </div>
@@ -287,8 +287,8 @@ export default function GovPage() {
                 onClick={() => setActiveTab(tab)}
                 className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
                   activeTab === tab
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-white text-gray-600 border border-gray-200 hover:border-indigo-300'
+                    ? 'bg-gray-900 text-white'
+                    : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-300'
                 }`}
               >
                 {tab}
@@ -315,7 +315,7 @@ export default function GovPage() {
                   <div className="flex flex-wrap items-center gap-2 mb-1">
                     <span className="font-semibold text-gray-800 text-sm">{app.name}</span>
                     {app.category && (
-                      <span className="text-xs bg-indigo-50 text-indigo-600 border border-indigo-100 px-2 py-0.5 rounded-full">
+                      <span className="text-xs bg-accent-tint text-accent border border-accent-tint px-2 py-0.5 rounded-full">
                         {app.category}
                       </span>
                     )}
@@ -389,7 +389,7 @@ export default function GovPage() {
                     value={form.name}
                     onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
                     placeholder="例：食品業者登錄"
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                   />
                 </div>
 
@@ -402,7 +402,7 @@ export default function GovPage() {
                     value={form.category}
                     onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
                     placeholder="選擇或輸入分類"
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                   />
                   <datalist id="gov-categories">
                     {CATEGORIES.map(c => <option key={c} value={c} />)}
@@ -417,7 +417,7 @@ export default function GovPage() {
                     onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
                     rows={2}
                     placeholder="簡短說明申請內容或注意事項"
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 resize-none"
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent resize-none"
                   />
                 </div>
 
@@ -432,7 +432,7 @@ export default function GovPage() {
                     value={form.tagsRaw}
                     onChange={e => setForm(f => ({ ...f, tagsRaw: e.target.value }))}
                     placeholder="例：衛生局, 必要, 定期"
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                   />
                   {form.tagsRaw.trim() && (
                     <div className="flex flex-wrap gap-1 mt-2">
@@ -451,7 +451,7 @@ export default function GovPage() {
                   <select
                     value={form.status}
                     onChange={e => setForm(f => ({ ...f, status: e.target.value as GovStatus }))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white"
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent bg-white"
                   >
                     {STATUS_ORDER.map(s => (
                       <option key={s} value={s}>{GOV_STATUS_LABEL[s]}</option>
@@ -467,7 +467,7 @@ export default function GovPage() {
                     onChange={e => setForm(f => ({ ...f, note: e.target.value }))}
                     rows={2}
                     placeholder="聯絡窗口、辦理進度等補充說明"
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 resize-none"
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent resize-none"
                   />
                 </div>
               </div>
@@ -482,7 +482,7 @@ export default function GovPage() {
                 <button
                   onClick={save}
                   disabled={saving || !form.name.trim()}
-                  className="px-5 py-2 text-sm font-medium bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-lg transition-colors"
+                  className="px-5 py-2 text-sm font-medium bg-gray-900 hover:bg-gray-800 disabled:opacity-50 text-white rounded-lg transition-colors"
                 >
                   {saving ? '儲存中…' : '儲存'}
                 </button>

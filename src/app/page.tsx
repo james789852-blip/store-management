@@ -4,31 +4,11 @@ import { useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { STORE_STATUS_LABEL } from '@/types'
+import { STORE_STATUS_BADGE, STORE_STATUS_DOT } from '@/lib/colors'
 import type { Store, StoreStatus } from '@/types'
 import Link from 'next/link'
 
 const ALL_FILTERS: Array<'all' | StoreStatus> = ['all', 'building', 'open', 'paused', 'closed']
-
-const STATUS_GRAD: Record<StoreStatus, string> = {
-  building: 'from-blue-500 to-indigo-600',
-  open:     'from-emerald-400 to-teal-500',
-  paused:   'from-amber-400 to-orange-500',
-  closed:   'from-gray-300 to-gray-400',
-}
-
-const STATUS_BADGE: Record<StoreStatus, string> = {
-  building: 'bg-blue-100 text-blue-700',
-  open:     'bg-emerald-100 text-emerald-700',
-  paused:   'bg-amber-100 text-amber-700',
-  closed:   'bg-gray-100 text-gray-500',
-}
-
-const STATUS_GLOW: Record<StoreStatus, string> = {
-  building: 'rgba(99,102,241,0.25)',
-  open:     'rgba(16,185,129,0.2)',
-  paused:   'rgba(245,158,11,0.25)',
-  closed:   'rgba(156,163,175,0.2)',
-}
 
 const FILTER_LABEL: Record<'all' | StoreStatus, string> = {
   all: '全部', building: '建置中', open: '已開幕', paused: '暫停', closed: '已結束',
@@ -44,10 +24,10 @@ function daysUntil(d: string | null) {
 }
 
 const ROLE_LABEL: Record<string, string> = {
-  super_admin: '超管',
-  manager: '店長',
-  shareholder: '股東',
+  super_admin: '超管', manager: '店長', shareholder: '股東',
 }
+
+function openSearch() { window.dispatchEvent(new Event('open-search')) }
 
 export default function Home() {
   const [stores, setStores] = useState<Store[]>([])
@@ -70,7 +50,7 @@ export default function Home() {
         .from('store_members')
         .select('stores(*)')
         .eq('user_id', user.id)
-      const list = (data ?? []).map((m: any) => m.stores).filter(Boolean)
+      const list = (data ?? []).map(m => (m as unknown as { stores: Store | null }).stores).filter(Boolean)
       setStores(list as Store[])
     }
     setLoading(false)
@@ -100,81 +80,76 @@ export default function Home() {
     return acc
   }, {} as Record<StoreStatus, number>)
 
+  const canManage = profile?.role === 'super_admin' || profile?.title === '老闆'
+
   return (
     <div className="min-h-screen bg-gray-50">
 
-      {/* Hero Header */}
-      <header className="bg-gradient-to-br from-blue-900 via-blue-800 to-blue-900" style={{ boxShadow: '0 4px 24px 0 rgba(30,64,175,0.45)' }}>
-        <div className="max-w-6xl mx-auto px-6 py-5 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl overflow-hidden shadow-lg">
+      {/* ── Top bar ── */}
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 shrink-0">
+            <div className="w-8 h-8 rounded-lg overflow-hidden">
               <img src="/logo.png" alt="logo" className="w-full h-full object-cover" />
             </div>
-            <div>
-              <h1 className="text-base font-bold text-white tracking-tight">梁平 · 建置管理</h1>
-              <p className="text-xs text-blue-200 mt-0.5">開發管理系統</p>
+            <div className="leading-tight">
+              <h1 className="text-sm font-bold text-gray-900 tracking-tight">梁平 · 建置管理</h1>
+              <p className="text-[11px] text-gray-400">開發管理系統</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            {!loading && stores.length > 0 && (
-              <div className="hidden sm:flex items-center gap-4 mr-3">
-                {(['building', 'open', 'paused'] as StoreStatus[]).filter(s => counts[s] > 0).map(s => (
-                  <div key={s} className="text-center">
-                    <p className="text-lg font-bold text-white leading-none">{counts[s]}</p>
-                    <p className="text-[10px] text-blue-200 mt-0.5">{STORE_STATUS_LABEL[s]}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-            <Link href="/sop"
-              className="hidden sm:inline-flex px-3.5 py-1.5 rounded-lg text-sm text-white/70 hover:text-white hover:bg-white/15 transition-colors font-medium">
+
+          {/* Search trigger */}
+          <button
+            onClick={openSearch}
+            className="hidden sm:flex items-center gap-2 flex-1 max-w-xs mx-auto px-3.5 py-2 rounded-xl border border-gray-200 text-gray-400 hover:border-gray-300 hover:text-gray-500 transition-colors"
+          >
+            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <circle cx="11" cy="11" r="7" /><path strokeLinecap="round" d="M21 21l-4-4" />
+            </svg>
+            <span className="text-sm">搜尋店面、廠商、費用…</span>
+            <kbd className="ml-auto text-[10px] border border-gray-200 rounded px-1.5 py-0.5">⌘K</kbd>
+          </button>
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button onClick={openSearch} className="sm:hidden w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <circle cx="11" cy="11" r="7" /><path strokeLinecap="round" d="M21 21l-4-4" />
+              </svg>
+            </button>
+            <Link href="/sop" className="hidden sm:inline-flex px-3 py-1.5 rounded-lg text-sm text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors font-medium">
               SOP 知識庫
             </Link>
             {profile?.role === 'super_admin' && (
-              <Link href="/admin/users"
-                className="inline-flex items-center justify-center w-8 h-8 sm:w-auto sm:h-auto sm:px-3.5 sm:py-1.5 rounded-lg text-white/70 hover:text-white hover:bg-white/15 transition-colors font-medium"
-                title="使用者管理">
-                <svg className="w-5 h-5 sm:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                  <circle cx="9" cy="7" r="4"/>
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+              <Link href="/admin/users" className="w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 transition-colors" title="使用者管理">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
                 </svg>
-                <span className="hidden sm:inline text-sm">使用者管理</span>
               </Link>
             )}
-            {(profile?.role === 'super_admin' || profile?.title === '老闆') && (
-              <button onClick={() => setShowAdd(true)}
-                className="bg-orange-500 text-white px-3 sm:px-4 py-1.5 rounded-lg text-sm font-bold hover:bg-orange-400 transition-colors shadow-lg">
+            {canManage && (
+              <button onClick={() => setShowAdd(true)} className="lp-btn-primary px-3 sm:px-4 py-2 text-sm">
                 <span className="hidden sm:inline">+ 新增店面</span>
                 <span className="sm:hidden">+ 新增</span>
               </button>
             )}
-            {/* User menu */}
-            <div className="flex items-center gap-2 pl-2 border-l border-white/20 ml-1">
+            <div className="flex items-center gap-2 pl-2 ml-1 border-l border-gray-200">
               <Link href="/profile" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-                <div className="w-8 h-8 rounded-full bg-white/20 border border-white/30 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-full bg-gray-900 flex items-center justify-center">
                   <span className="text-white text-xs font-bold leading-none">
                     {(profile?.display_name || user?.email || '?')[0]?.toUpperCase()}
                   </span>
                 </div>
-                <div className="hidden sm:block">
-                  <p className="text-white text-xs font-semibold leading-none">
-                    {profile?.display_name || user?.email?.split('@')[0]}
-                  </p>
-                  {profile?.role && (
-                    <p className="text-blue-200 text-[10px] mt-0.5">{ROLE_LABEL[profile.role]}</p>
-                  )}
+                <div className="hidden sm:block leading-tight">
+                  <p className="text-gray-900 text-xs font-semibold">{profile?.display_name || user?.email?.split('@')[0]}</p>
+                  {profile?.role && <p className="text-gray-400 text-[10px] mt-0.5">{ROLE_LABEL[profile.role]}</p>}
                 </div>
               </Link>
-              <button
-                onClick={signOut}
-                title="登出"
-                className="text-white/50 hover:text-white transition-colors ml-1"
-              >
+              <button onClick={signOut} title="登出" className="text-gray-300 hover:text-brand-red transition-colors ml-1">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-                  <polyline points="16 17 21 12 16 7"/>
-                  <line x1="21" y1="12" x2="9" y2="12"/>
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                  <polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
                 </svg>
               </button>
             </div>
@@ -182,30 +157,34 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 py-5 sm:px-6 sm:py-8">
+      <main className="max-w-6xl mx-auto px-4 py-6 sm:px-6 sm:py-8">
 
-        {/* Filter tabs */}
+        {/* Title + counts */}
         {!loading && stores.length > 0 && (
-          <div className="flex items-center gap-1.5 mb-7 bg-white border border-gray-200 rounded-2xl p-1.5 w-fit shadow-sm">
-            {ALL_FILTERS.map(f => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className={`px-3.5 py-1.5 rounded-xl text-sm font-medium transition-all ${
-                  filter === f
-                    ? 'bg-gradient-to-r from-orange-500 to-amber-400 text-white shadow-md'
-                    : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'
-                }`}
-                style={filter === f ? { boxShadow: '0 3px 10px 0 rgba(249,115,22,0.4)' } : {}}
-              >
-                {FILTER_LABEL[f]}
-                {f !== 'all' && counts[f] > 0 && (
-                  <span className={`ml-1.5 text-xs ${filter === f ? 'opacity-70' : 'text-gray-400'}`}>
-                    {counts[f]}
-                  </span>
-                )}
-              </button>
-            ))}
+          <div className="flex flex-wrap items-end justify-between gap-4 mb-6">
+            <div>
+              <h2 className="text-xl font-bold text-gray-900">所有店面</h2>
+              <p className="text-sm text-gray-400 mt-0.5">共 {stores.length} 間 · 建置中 {counts.building} · 營運中 {counts.open}</p>
+            </div>
+            {/* Filter chips */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {ALL_FILTERS.map(f => (
+                <button
+                  key={f}
+                  onClick={() => setFilter(f)}
+                  className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-all border ${
+                    filter === f
+                      ? 'bg-gray-900 text-white border-gray-900'
+                      : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300 hover:text-gray-800'
+                  }`}
+                >
+                  {FILTER_LABEL[f]}
+                  {f !== 'all' && counts[f] > 0 && (
+                    <span className={`ml-1.5 text-xs ${filter === f ? 'opacity-70' : 'text-gray-400'}`}>{counts[f]}</span>
+                  )}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
@@ -213,74 +192,60 @@ export default function Home() {
           <div className="flex items-center justify-center py-40 text-gray-400 text-sm">載入中...</div>
         ) : stores.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-40">
-            <div className="w-16 h-16 bg-gradient-to-br from-orange-100 to-amber-100 rounded-3xl flex items-center justify-center mb-5 text-3xl">
-              🍗
-            </div>
-            <h2 className="text-gray-700 font-bold text-xl mb-1.5">尚無店面資料</h2>
+            <div className="w-16 h-16 bg-accent-tint rounded-3xl flex items-center justify-center mb-5 text-3xl">🍗</div>
+            <h2 className="text-gray-800 font-bold text-xl mb-1.5">尚無店面資料</h2>
             <p className="text-gray-400 text-sm mb-7">新增第一間店面，開始管理建置進度</p>
-            {(profile?.role === 'super_admin' || profile?.title === '老闆') && (
-              <button onClick={() => setShowAdd(true)}
-                className="bg-gradient-to-r from-orange-500 to-amber-400 text-white px-6 py-2.5 rounded-xl text-sm font-bold hover:from-orange-600 hover:to-amber-500 transition-all shadow-lg"
-                style={{ boxShadow: '0 4px 16px 0 rgba(249,115,22,0.45)' }}>
-                + 新增第一間店面
-              </button>
+            {canManage && (
+              <button onClick={() => setShowAdd(true)} className="lp-btn-primary px-6 py-2.5 text-sm">+ 新增第一間店面</button>
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filtered.map(store => {
               const days = daysUntil(store.open_date)
               return (
-                <Link key={store.id} href={`/stores/${store.id}/overview`}>
-                  <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-200 cursor-pointer group">
-                    {/* Top gradient bar */}
-                    <div className={`h-1.5 w-full bg-gradient-to-r ${STATUS_GRAD[store.status]}`} />
-
+                <Link key={store.id} href={`/stores/${store.id}/overview`} className="block">
+                  <div className="lp-card lp-card-hover overflow-hidden cursor-pointer h-full">
+                    {/* cover photo */}
+                    <div className="relative h-28 w-full">
+                      {store.cover_photo ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={store.cover_photo} alt={store.name} className="absolute inset-0 w-full h-full object-cover" />
+                      ) : (
+                        <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg,#2A2926 0%,#4A4840 60%,#8A5A2B 100%)' }} />
+                      )}
+                      <div className={`absolute bottom-0 left-0 right-0 h-1 ${STORE_STATUS_DOT[store.status]}`} />
+                    </div>
                     <div className="p-5">
-                      {/* Header row */}
-                      <div className="flex items-start justify-between mb-5">
+                      <div className="flex items-start justify-between gap-3 mb-4">
                         <div className="flex-1 min-w-0">
-                          <h2 className="font-bold text-gray-900 text-base truncate">{store.name}</h2>
-                          {store.address && (
-                            <p className="text-xs text-gray-400 mt-0.5 truncate">{store.address}</p>
-                          )}
+                          <h3 className="font-bold text-gray-900 text-base truncate">{store.name}</h3>
+                          {store.address && <p className="text-xs text-gray-400 mt-0.5 truncate">{store.address}</p>}
                         </div>
-                        <span className={`ml-3 shrink-0 text-xs px-2.5 py-1 rounded-full font-semibold ${STATUS_BADGE[store.status]}`}>
+                        <span className={`shrink-0 text-xs px-2.5 py-1 rounded-full font-semibold ${STORE_STATUS_BADGE[store.status]}`}>
                           {STORE_STATUS_LABEL[store.status]}
                         </span>
                       </div>
 
-                      {/* Info grid */}
-                      <div className="grid grid-cols-2 gap-2.5 mb-4">
-                        {store.monthly_rent ? (
-                          <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
-                            <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mb-1">月租金</p>
-                            <p className="font-bold text-gray-800 text-sm">NT$ {store.monthly_rent.toLocaleString()}</p>
-                          </div>
-                        ) : null}
-                        {store.sqft ? (
-                          <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
-                            <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mb-1">坪數</p>
-                            <p className="font-bold text-gray-800 text-sm">{store.sqft} 坪</p>
-                          </div>
-                        ) : null}
+                      <div className="grid grid-cols-2 gap-2.5 mb-1">
+                        <div className="bg-gray-50 rounded-xl p-3">
+                          <p className="text-[10px] text-gray-400 font-semibold tracking-wider mb-1">月租金</p>
+                          <p className="font-bold text-gray-800 text-sm">{store.monthly_rent ? `NT$ ${store.monthly_rent.toLocaleString()}` : '—'}</p>
+                        </div>
+                        <div className="bg-gray-50 rounded-xl p-3">
+                          <p className="text-[10px] text-gray-400 font-semibold tracking-wider mb-1">坪數</p>
+                          <p className="font-bold text-gray-800 text-sm">{store.sqft ? `${store.sqft} 坪` : '—'}</p>
+                        </div>
                       </div>
 
-                      {/* Days */}
                       {days !== null && (
-                        <div className="pt-3 border-t border-gray-50">
-                          <div
-                            className={`inline-flex items-center gap-1.5 text-sm font-semibold px-3 py-1 rounded-full ${
-                              days < 0
-                                ? 'bg-emerald-50 text-emerald-600'
-                                : days <= 14
-                                ? 'bg-red-50 text-red-500'
-                                : 'bg-indigo-50 text-indigo-600'
-                            }`}
-                          >
-                            <span className={`w-1.5 h-1.5 rounded-full ${
-                              days < 0 ? 'bg-emerald-400' : days <= 14 ? 'bg-red-400' : 'bg-indigo-400'
-                            }`} />
+                        <div className="pt-3 mt-3 border-t border-gray-100">
+                          <div className={`inline-flex items-center gap-1.5 text-sm font-semibold px-3 py-1 rounded-full ${
+                            days < 0 ? 'bg-brand-teal-tint text-brand-teal'
+                              : days <= 14 ? 'bg-brand-red-tint text-brand-red'
+                                : 'bg-accent-tint text-accent'
+                          }`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${days < 0 ? 'bg-brand-teal' : days <= 14 ? 'bg-brand-red' : 'bg-accent'}`} />
                             {days < 0 ? `已開幕 ${Math.abs(days)} 天` : `距開幕 ${days} 天`}
                           </div>
                         </div>
@@ -296,18 +261,16 @@ export default function Home() {
 
       {/* Add store modal */}
       {showAdd && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 sm:p-4">
-          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md shadow-2xl overflow-hidden">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 sm:p-4">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md overflow-hidden" style={{ boxShadow: 'var(--shadow-lg)' }}>
             <div className="px-5 sm:px-6 py-5 border-b border-gray-100">
               <h2 className="font-bold text-gray-900 text-lg">新增店面</h2>
               <p className="text-sm text-gray-400 mt-0.5">建立後可進入店面填寫詳細資料</p>
             </div>
             <div className="p-5 sm:p-6 space-y-4">
               <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">店名 *</label>
-                <input autoFocus
-                  className="mt-2 w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 transition-all"
-                  placeholder="例：梁平雞肉飯 中正店"
+                <label className="text-xs font-semibold text-gray-500 tracking-wider">店名 *</label>
+                <input autoFocus className="lp-input mt-2" placeholder="例：梁平雞肉飯 中正店"
                   value={form.name}
                   onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
                   onCompositionStart={() => { isComposing.current = true }}
@@ -316,46 +279,28 @@ export default function Home() {
                 />
               </div>
               <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">地址</label>
-                <input
-                  className="mt-2 w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 transition-all"
-                  value={form.address}
-                  onChange={e => setForm(f => ({ ...f, address: e.target.value }))}
-                />
+                <label className="text-xs font-semibold text-gray-500 tracking-wider">地址</label>
+                <input className="lp-input mt-2" value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">月租金</label>
-                  <input type="number"
-                    className="mt-2 w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 transition-all"
-                    value={form.monthly_rent}
-                    onChange={e => setForm(f => ({ ...f, monthly_rent: e.target.value }))} />
+                  <label className="text-xs font-semibold text-gray-500 tracking-wider">月租金</label>
+                  <input type="number" className="lp-input mt-2" value={form.monthly_rent} onChange={e => setForm(f => ({ ...f, monthly_rent: e.target.value }))} />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">坪數</label>
-                  <input type="number"
-                    className="mt-2 w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 transition-all"
-                    value={form.sqft}
-                    onChange={e => setForm(f => ({ ...f, sqft: e.target.value }))} />
+                  <label className="text-xs font-semibold text-gray-500 tracking-wider">坪數</label>
+                  <input type="number" className="lp-input mt-2" value={form.sqft} onChange={e => setForm(f => ({ ...f, sqft: e.target.value }))} />
                 </div>
               </div>
               <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">預計開幕日</label>
-                <input type="date"
-                  className="mt-2 w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 transition-all"
-                  value={form.open_date}
-                  onChange={e => setForm(f => ({ ...f, open_date: e.target.value }))} />
+                <label className="text-xs font-semibold text-gray-500 tracking-wider">預計開幕日</label>
+                <input type="date" className="lp-input mt-2" value={form.open_date} onChange={e => setForm(f => ({ ...f, open_date: e.target.value }))} />
               </div>
             </div>
             <div className="flex gap-2 px-5 sm:px-6 pb-5 sm:pb-6">
-              <button
-                onClick={() => { setShowAdd(false); setForm({ name: '', address: '', monthly_rent: '', sqft: '', open_date: '' }) }}
-                className="flex-1 border border-gray-200 text-gray-600 py-2.5 rounded-xl text-sm hover:bg-gray-50 transition-colors font-medium">
-                取消
-              </button>
-              <button onClick={addStore} disabled={!form.name || saving}
-                className="flex-1 bg-gradient-to-r from-orange-500 to-amber-400 text-white py-2.5 rounded-xl text-sm font-bold hover:from-orange-600 hover:to-amber-500 disabled:opacity-40 transition-all shadow-md"
-                style={{ boxShadow: '0 4px 14px 0 rgba(249,115,22,0.45)' }}>
+              <button onClick={() => { setShowAdd(false); setForm({ name: '', address: '', monthly_rent: '', sqft: '', open_date: '' }) }}
+                className="lp-btn-ghost flex-1 py-2.5 text-sm">取消</button>
+              <button onClick={addStore} disabled={!form.name || saving} className="lp-btn-primary flex-1 py-2.5 text-sm">
                 {saving ? '建立中...' : '建立店面'}
               </button>
             </div>

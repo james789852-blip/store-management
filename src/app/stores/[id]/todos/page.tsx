@@ -208,7 +208,7 @@ export default function TodosPage() {
 
   const progressPct = total === 0 ? 0 : Math.round((doneCount / total) * 100)
 
-  const inputCls = 'mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
+  const inputCls = 'mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent'
   const labelCls = 'text-xs font-medium text-gray-600'
 
   if (loading) return <div className="flex items-center justify-center py-32 text-gray-400">載入中...</div>
@@ -225,7 +225,7 @@ export default function TodosPage() {
             <div className="flex items-center gap-3">
               <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-blue-500 rounded-full transition-all duration-300"
+                  className={`h-full rounded-full transition-all duration-300 ${progressPct === 100 ? 'bg-brand-teal' : 'bg-accent'}`}
                   style={{ width: `${progressPct}%` }}
                 />
               </div>
@@ -236,7 +236,7 @@ export default function TodosPage() {
           </div>
           <button
             onClick={openAdd}
-            className="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors whitespace-nowrap">
+            className="bg-gray-900 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-gray-800 transition-colors whitespace-nowrap">
             + 新增待辦
           </button>
         </div>
@@ -260,7 +260,7 @@ export default function TodosPage() {
               <button
                 key={val}
                 onClick={() => setDoneFilter(val)}
-                className={`px-3 py-2 text-sm transition-colors ${doneFilter === val ? 'bg-blue-600 text-white' : 'text-gray-500 hover:bg-gray-50'}`}>
+                className={`px-3 py-2 text-sm transition-colors ${doneFilter === val ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-50'}`}>
                 {label}
               </button>
             ))}
@@ -269,7 +269,7 @@ export default function TodosPage() {
           <select
             value={priorityFilter}
             onChange={e => setPriorityFilter(e.target.value as 'all' | TodoPriority)}
-            className="border border-gray-200 bg-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            className="border border-gray-200 bg-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent">
             <option value="all">所有優先度</option>
             <option value="high">高優先</option>
             <option value="mid">中優先</option>
@@ -287,16 +287,26 @@ export default function TodosPage() {
             onKeyDown={handleQuickAdd}
             disabled={quickAdding}
             placeholder="快速新增待辦事項，按 Enter 儲存..."
-            className="w-full border border-gray-200 bg-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 placeholder:text-gray-400"
+            className="w-full border border-gray-200 bg-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-50 placeholder:text-gray-400"
           />
         </div>
 
+        {/* 全部完成慶祝 */}
+        {total > 0 && doneCount === total && (
+          <div className="rounded-2xl border border-brand-teal bg-brand-teal-tint px-5 py-4 flex items-center gap-3 mb-5">
+            <span className="text-2xl">🎉</span>
+            <p className="text-sm font-bold text-brand-teal">全部完成！這間店的待辦都清空了，太棒了。</p>
+          </div>
+        )}
+
         {/* Empty state */}
         {todos.length === 0 ? (
-          <div className="text-center py-24 text-gray-400">
-            <div className="text-5xl mb-4 select-none">&#10003;</div>
-            <p className="text-lg font-medium text-gray-600 mb-1">尚無待辦事項</p>
-            <p className="text-sm">在上方快速新增，或點擊「新增待辦」建立詳細事項</p>
+          <div className="text-center py-20">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-accent-tint flex items-center justify-center text-accent">
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7l2 2 4-4" /></svg>
+            </div>
+            <p className="text-lg font-semibold text-gray-800 mb-1">還沒有待辦</p>
+            <p className="text-sm text-gray-400">在上方打一行字、按 Enter 就能快速新增</p>
           </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-20 text-gray-400">
@@ -403,7 +413,7 @@ export default function TodosPage() {
                     onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className={labelCls}>類別</label>
                     <input
@@ -459,7 +469,7 @@ export default function TodosPage() {
                 <button
                   onClick={save}
                   disabled={!form.title.trim() || saving}
-                  className="flex-1 bg-blue-600 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                  className="flex-1 bg-gray-900 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 disabled:opacity-50 transition-colors">
                   {saving ? '儲存中...' : '儲存'}
                 </button>
               </div>

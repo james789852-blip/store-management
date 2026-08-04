@@ -211,7 +211,7 @@ export default function ExpensesPage() {
   const totalUnreimbursed = expenses.filter(e => !e.reimbursed).reduce((s, e) => s + e.total, 0)
   const filteredTotal = filtered.reduce((s, e) => s + e.total, 0)
 
-  const inputCls = 'mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
+  const inputCls = 'mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent'
   const labelCls = 'text-xs font-medium text-gray-600'
 
   if (loading) return <div className="flex items-center justify-center py-32 text-gray-400">載入中...</div>
@@ -223,32 +223,7 @@ export default function ExpensesPage() {
         <div className="flex flex-wrap items-start justify-between gap-3 mb-5 sm:mb-8">
           <div>
             <h1 className="text-xl sm:text-2xl font-bold text-gray-900">費用記錄</h1>
-            <div className="flex flex-wrap gap-2 sm:gap-4 mt-3">
-              <div className="bg-white rounded-xl border border-gray-200 px-3 sm:px-4 py-2 sm:py-2.5">
-                <p className="text-xs text-gray-400">總金額</p>
-                <p className="text-base sm:text-lg font-bold text-gray-900">NT$ {totalAll.toLocaleString()}</p>
-              </div>
-              <div className="bg-white rounded-xl border border-gray-200 px-3 sm:px-4 py-2 sm:py-2.5">
-                <p className="text-xs text-gray-400">已付清</p>
-                <p className="text-base sm:text-lg font-bold text-green-600">NT$ {totalPaid.toLocaleString()}</p>
-              </div>
-              <div className="bg-white rounded-xl border border-gray-200 px-3 sm:px-4 py-2 sm:py-2.5">
-                <p className="text-xs text-gray-400">未付款</p>
-                <p className="text-base sm:text-lg font-bold text-gray-500">NT$ {totalPending.toLocaleString()}</p>
-              </div>
-              {totalTax > 0 && (
-                <div className="bg-amber-50 rounded-xl border border-amber-200 px-3 sm:px-4 py-2 sm:py-2.5">
-                  <p className="text-xs text-amber-600">稅外加合計</p>
-                  <p className="text-base sm:text-lg font-bold text-amber-700">NT$ {totalTax.toLocaleString()}</p>
-                </div>
-              )}
-              {totalUnreimbursed > 0 && (
-                <div className="bg-purple-50 rounded-xl border border-purple-200 px-3 sm:px-4 py-2 sm:py-2.5">
-                  <p className="text-xs text-purple-600">未請款</p>
-                  <p className="text-base sm:text-lg font-bold text-purple-700">NT$ {totalUnreimbursed.toLocaleString()}</p>
-                </div>
-              )}
-            </div>
+            <p className="text-sm text-gray-400 mt-0.5">共 {expenses.length} 筆費用</p>
           </div>
           <div className="flex gap-2 pt-1">
             {expenses.length > 0 && (
@@ -258,11 +233,37 @@ export default function ExpensesPage() {
               </button>
             )}
             <button onClick={openAdd}
-              className="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors">
+              className="bg-gray-900 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-gray-800 transition-colors">
               + 新增費用
             </button>
           </div>
         </div>
+
+        {/* KPI summary */}
+        {expenses.length > 0 && (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+            <div className="lp-card p-4 min-w-0">
+              <p className="text-xs text-gray-500 mb-1.5">總費用</p>
+              <p className="text-xl font-bold text-gray-900 truncate">NT$ {totalAll.toLocaleString()}</p>
+              <p className="text-[11px] text-gray-400 mt-1.5 truncate">{expenses.length} 筆{totalTax > 0 ? ` · 稅外加 ${totalTax.toLocaleString()}` : ''}</p>
+            </div>
+            <div className="lp-card p-4 min-w-0">
+              <p className="text-xs text-gray-500 mb-1.5">已付清</p>
+              <p className="text-xl font-bold text-brand-teal truncate">NT$ {totalPaid.toLocaleString()}</p>
+              <p className="text-[11px] text-gray-400 mt-1.5 truncate">{totalAll > 0 ? Math.round((totalPaid / totalAll) * 100) : 0}% 已支付</p>
+            </div>
+            <div className="lp-card p-4 min-w-0">
+              <p className="text-xs text-gray-500 mb-1.5">未付款</p>
+              <p className="text-xl font-bold text-gray-700 truncate">NT$ {totalPending.toLocaleString()}</p>
+              <p className="text-[11px] text-gray-400 mt-1.5 truncate">待付款項</p>
+            </div>
+            <div className="lp-card p-4 min-w-0">
+              <p className="text-xs text-gray-500 mb-1.5">未請款</p>
+              <p className="text-xl font-bold text-accent truncate">NT$ {totalUnreimbursed.toLocaleString()}</p>
+              <p className="text-[11px] text-gray-400 mt-1.5 truncate">尚未向公司請款</p>
+            </div>
+          </div>
+        )}
 
         {/* Filter bar */}
         {expenses.length > 0 && (
@@ -271,7 +272,7 @@ export default function ExpensesPage() {
             <select
               value={categoryFilter}
               onChange={e => setCategoryFilter(e.target.value)}
-              className="border border-gray-200 bg-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              className="border border-gray-200 bg-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent">
               <option value="all">所有類別</option>
               {allCategories.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
@@ -282,7 +283,7 @@ export default function ExpensesPage() {
                 <button
                   key={val}
                   onClick={() => setStatusFilter(val as PayStatusFilter)}
-                  className={`px-3 py-2 text-sm transition-colors ${statusFilter === val ? 'bg-blue-600 text-white' : 'text-gray-500 hover:bg-gray-50'}`}>
+                  className={`px-3 py-2 text-sm transition-colors ${statusFilter === val ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-50'}`}>
                   {label}
                 </button>
               ))}
@@ -294,7 +295,7 @@ export default function ExpensesPage() {
                 <button
                   key={val}
                   onClick={() => setReimbursedFilter(val)}
-                  className={`px-3 py-2 text-sm transition-colors ${reimbursedFilter === val ? 'bg-purple-600 text-white' : 'text-gray-500 hover:bg-gray-50'}`}>
+                  className={`px-3 py-2 text-sm transition-colors ${reimbursedFilter === val ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-50'}`}>
                   {label}
                 </button>
               ))}
@@ -304,9 +305,12 @@ export default function ExpensesPage() {
 
         {/* Table */}
         {expenses.length === 0 ? (
-          <div className="text-center py-24 text-gray-400">
-            <p className="text-lg font-medium text-gray-600 mb-1">尚無費用記錄</p>
-            <p className="text-sm">點擊「新增費用」開始記錄每一筆建置費用</p>
+          <div className="text-center py-20">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-accent-tint flex items-center justify-center text-accent">
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 14l6-6M9.5 9h.01M14.5 13h.01M6 3h12a1 1 0 011 1v16l-2-1.5L15 20l-2-1.5L11 20l-2-1.5L7 20l-2-1.5V4a1 1 0 011-1z" /></svg>
+            </div>
+            <p className="text-lg font-semibold text-gray-800 mb-1">還沒有費用記錄</p>
+            <p className="text-sm text-gray-400">每一筆建置花費都記下來，預算與請款一目了然</p>
           </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-20 text-gray-400">
@@ -451,7 +455,7 @@ export default function ExpensesPage() {
                 {/* Section 1: 基本資訊 */}
                 <div>
                   <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">基本資訊</h3>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className={labelCls}>日期</label>
                       <input type="date" className={inputCls}
@@ -486,7 +490,7 @@ export default function ExpensesPage() {
                 {/* Section 2: 付款資訊 */}
                 <div>
                   <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">付款資訊</h3>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className={labelCls}>付款方式</label>
                       <input className={inputCls} list="pay-method-list" placeholder="例：轉帳"
@@ -566,7 +570,7 @@ export default function ExpensesPage() {
                         稅外加金額
                         <span className="ml-1.5 text-[10px] text-amber-600 font-normal">（開立發票時另外計算的稅額）</span>
                       </label>
-                      <input type="number" className={`${inputCls} border-amber-200 focus:ring-amber-400`} placeholder="例：1050（5% 稅額）"
+                      <input type="number" className={`${inputCls} border-amber-200 focus:ring-accent`} placeholder="例：1050（5% 稅額）"
                         value={form.tax_amount} onChange={e => setForm(f => ({ ...f, tax_amount: e.target.value }))} />
                     </div>
                     <div className="col-span-2">
@@ -608,7 +612,7 @@ export default function ExpensesPage() {
                   取消
                 </button>
                 <button onClick={save} disabled={!form.name || !form.total || saving}
-                  className="flex-1 bg-blue-600 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                  className="flex-1 bg-gray-900 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 disabled:opacity-50 transition-colors">
                   {saving ? '儲存中...' : '儲存'}
                 </button>
               </div>

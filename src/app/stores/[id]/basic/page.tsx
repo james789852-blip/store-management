@@ -4,22 +4,18 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import type { Store } from '@/types'
+import FileUploader from '@/components/FileUploader'
+import StaffList from '@/components/StaffList'
+import PaymentList from '@/components/PaymentList'
 
 type FormData = Partial<Omit<Store, 'id' | 'created_at' | 'updated_at'>>
 
-interface StoreContact {
-  id: string
-  name: string
-  phone: string | null
-  line_id: string | null
-  sort_order: number
-}
+type Field = { key: string; label: string; type?: string; textarea?: boolean; required?: boolean }
+type Section = { title: string; hint?: string; fields: Field[] }
+type TabKey = 'basic' | 'accounts' | 'contacts'
 
-type ContactDraft = { name: string; phone: string; line_id: string }
-const EMPTY_CONTACT: ContactDraft = { name: '', phone: '', line_id: '' }
-
-const FIELD_GROUPS = {
-  basic: [
+const BASIC_SECTIONS: Section[] = [
+  { title: '店面基本', fields: [
     { key: 'name', label: '店名', required: true },
     { key: 'tax_id', label: '統一編號' },
     { key: 'phone', label: '電話' },
@@ -27,31 +23,68 @@ const FIELD_GROUPS = {
     { key: 'sqft', label: '坪數', type: 'number' },
     { key: 'seats', label: '座位數', type: 'number' },
     { key: 'business_hours', label: '營業時間' },
+  ] },
+  { title: '租約與財務', fields: [
     { key: 'monthly_rent', label: '月租金', type: 'number' },
     { key: 'deposit', label: '押金', type: 'number' },
     { key: 'open_date', label: '開幕日', type: 'date' },
     { key: 'lease_end_date', label: '租約到期日', type: 'date' },
-    { key: 'bank_account', label: '銀行帳號' },
-    { key: 'notes', label: '備註', textarea: true },
-  ],
-  accounts: [
+  ] },
+]
+
+const POS_SECTIONS: Section[] = [
+  { title: 'POS 系統', hint: '不同店可用不同系統（iChef / 肚肚 / 柿子紅…）', fields: [
+    { key: 'pos_system', label: 'POS 系統名稱' },
+    { key: 'pos_front_account', label: '前台帳號' },
+    { key: 'pos_front_password', label: '前台密碼' },
+    { key: 'pos_back_account', label: '後台帳號' },
+    { key: 'pos_back_password', label: '後台密碼' },
+    { key: 'printer_model', label: '出單機型號' },
+  ] },
+  { title: '網路', fields: [
+    { key: 'wifi_model', label: 'Wi-Fi 機型' },
     { key: 'wifi_ssid', label: 'Wi-Fi SSID' },
     { key: 'wifi_password', label: 'Wi-Fi 密碼' },
+  ] },
+  { title: '監視系統', fields: [
+    { key: 'cctv_brand', label: '監視器品牌' },
     { key: 'cctv_ip', label: '監視器 IP / 域名' },
     { key: 'cctv_port', label: '監視器 HTTP 埠' },
-    { key: 'cctv_nickname', label: '監視器設備暱稱' },
-    { key: 'cctv_account', label: '監視器使用者名稱' },
+    { key: 'cctv_nickname', label: '設備暱稱' },
+    { key: 'cctv_account', label: '使用者名稱' },
     { key: 'cctv_password', label: '監視器密碼' },
-    { key: 'pos_account', label: 'POS 帳號' },
-    { key: 'pos_password', label: 'POS 密碼' },
-  ],
-  contacts: [
-    { key: 'owner_name', label: '負責人姓名' },
-    { key: 'owner_phone', label: '負責人電話' },
-    { key: 'owner_id_number', label: '負責人身分證字號' },
+  ] },
+  { title: '發票機', fields: [
+    { key: 'invoice_machine', label: '電子發票機' },
+  ] },
+]
+
+const CONTACT_SECTIONS: Section[] = [
+  { title: '房東', fields: [
     { key: 'landlord_name', label: '房東姓名' },
     { key: 'landlord_phone', label: '房東電話' },
-  ],
+  ] },
+  { title: '緊急聯絡', fields: [
+    { key: 'emergency_name', label: '緊急聯絡人' },
+    { key: 'emergency_phone', label: '緊急聯絡電話' },
+  ] },
+]
+
+const TABS: { key: TabKey; label: string }[] = [
+  { key: 'basic', label: '基本資料' },
+  { key: 'accounts', label: '帳密 · POS · 支付' },
+  { key: 'contacts', label: '聯絡窗口' },
+]
+
+// 完整度計算用的關鍵欄位
+const KEY_FIELDS = [
+  'name', 'tax_id', 'phone', 'address', 'sqft', 'business_hours',
+  'monthly_rent', 'open_date', 'lease_end_date', 'bank_name', 'bank_account',
+  'pos_system', 'wifi_ssid', 'invoice_machine', 'owner_name', 'landlord_name', 'emergency_name',
+]
+
+function isFilled(v: unknown): boolean {
+  return v !== null && v !== undefined && String(v).trim() !== ''
 }
 
 export default function BasicPage() {
@@ -60,25 +93,13 @@ export default function BasicPage() {
   const [form, setForm] = useState<FormData>({})
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
-  const [activeTab, setActiveTab] = useState<'basic' | 'accounts' | 'contacts'>('basic')
-
-  // contacts state
-  const [contacts, setContacts] = useState<StoreContact[]>([])
-  const [editingContactId, setEditingContactId] = useState<string | null>(null)
-  const [editDraft, setEditDraft] = useState<ContactDraft>(EMPTY_CONTACT)
-  const [adding, setAdding] = useState(false)
-  const [addDraft, setAddDraft] = useState<ContactDraft>(EMPTY_CONTACT)
-  const [contactSaving, setContactSaving] = useState(false)
+  const [activeTab, setActiveTab] = useState<TabKey>('basic')
 
   useEffect(() => { load() }, [id]) // eslint-disable-line
 
   async function load() {
-    const [{ data: storeData }, { data: contactsData }] = await Promise.all([
-      supabase.from('stores').select('*').eq('id', id).single(),
-      supabase.from('store_contacts').select('id, name, phone, line_id, sort_order').eq('store_id', id).order('sort_order'),
-    ])
-    if (storeData) { setStore(storeData); setForm(storeData) }
-    setContacts((contactsData || []) as StoreContact[])
+    const { data } = await supabase.from('stores').select('*').eq('id', id).single()
+    if (data) { setStore(data); setForm(data) }
   }
 
   async function save() {
@@ -91,219 +112,147 @@ export default function BasicPage() {
     load()
   }
 
-  function val(key: string) {
-    return (form as Record<string, unknown>)[key] ?? ''
+  function val(key: string) { return (form as Record<string, unknown>)[key] ?? '' }
+  function set(key: string, value: unknown) { setForm(f => ({ ...f, [key]: value === '' ? null : value })) }
+
+  const filledCount = KEY_FIELDS.filter(k => isFilled((form as Record<string, unknown>)[k])).length
+  const overallPct = Math.round((filledCount / KEY_FIELDS.length) * 100)
+
+  function renderField(field: Field) {
+    const fieldVal = String(val(field.key))
+    const filled = isFilled((form as Record<string, unknown>)[field.key])
+    return (
+      <div key={field.key} className={field.textarea ? 'sm:col-span-2' : ''}>
+        <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+          {field.label}
+          {field.required && <span className="text-brand-red">*</span>}
+          {!field.required && !field.textarea && !filled && <span className="text-[10px] text-gray-300">未填</span>}
+        </label>
+        <div className="mt-1">
+          {field.textarea ? (
+            <textarea rows={3} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent resize-none"
+              value={fieldVal} onChange={e => set(field.key, e.target.value)} />
+          ) : (
+            <input type={field.type ?? 'text'} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+              value={fieldVal} onChange={e => set(field.key, e.target.value)} />
+          )}
+        </div>
+      </div>
+    )
   }
 
-  function set(key: string, value: unknown) {
-    setForm(f => ({ ...f, [key]: value === '' ? null : value }))
+  function renderSection(section: Section) {
+    return (
+      <div key={section.title} className="lp-card p-5">
+        <h3 className="text-sm font-semibold text-gray-800">{section.title}</h3>
+        {section.hint && <p className="text-[11px] text-gray-400 mt-0.5 mb-3">{section.hint}</p>}
+        <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${section.hint ? '' : 'mt-4'}`}>
+          {section.fields.map(renderField)}
+        </div>
+      </div>
+    )
   }
 
-  // ── contacts CRUD ──────────────────────────────────────────────────────────
-
-  function startEdit(c: StoreContact) {
-    setEditingContactId(c.id)
-    setEditDraft({ name: c.name, phone: c.phone ?? '', line_id: c.line_id ?? '' })
+  function photoField(label: string, key: string) {
+    const cur = String(val(key))
+    return (
+      <div>
+        <label className="text-sm font-medium text-gray-700">{label}</label>
+        <div className="mt-1.5">
+          <FileUploader
+            folderPath={`${id}/basic`}
+            value={cur ? [cur] : []}
+            onChange={urls => set(key, urls[0] || null)}
+            multiple={false}
+            accept="image/*"
+          />
+        </div>
+      </div>
+    )
   }
-
-  async function saveEdit() {
-    if (!editingContactId || !editDraft.name.trim()) return
-    setContactSaving(true)
-    await supabase.from('store_contacts')
-      .update({ name: editDraft.name, phone: editDraft.phone || null, line_id: editDraft.line_id || null })
-      .eq('id', editingContactId)
-    setContactSaving(false)
-    setEditingContactId(null)
-    load()
-  }
-
-  async function deleteContact(contactId: string) {
-    if (!confirm('確定要刪除這位聯絡人？')) return
-    await supabase.from('store_contacts').delete().eq('id', contactId)
-    setContacts(prev => prev.filter(c => c.id !== contactId))
-  }
-
-  async function addContact() {
-    if (!addDraft.name.trim()) return
-    setContactSaving(true)
-    const { data, error } = await supabase
-      .from('store_contacts')
-      .insert({ store_id: id, name: addDraft.name, phone: addDraft.phone || null, line_id: addDraft.line_id || null, sort_order: contacts.length })
-      .select()
-      .single()
-    setContactSaving(false)
-    if (error || !data) { alert('新增失敗：' + (error?.message ?? '請再試一次')); return }
-    setContacts(prev => [...prev, data as StoreContact])
-    setAdding(false)
-    setAddDraft(EMPTY_CONTACT)
-  }
-
-  const TABS = [
-    { key: 'basic' as const, label: '基本資料' },
-    { key: 'accounts' as const, label: '帳號密碼' },
-    { key: 'contacts' as const, label: '聯絡人' },
-  ]
-
-  const fields = FIELD_GROUPS[activeTab]
-
-  const inputCls = 'w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
 
   return (
     <div className="bg-gray-50 min-h-full p-4 sm:p-8">
       <div className="max-w-3xl mx-auto">
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-5 sm:mb-6">
+
+        {/* Header */}
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
           <div>
             <h1 className="text-xl sm:text-2xl font-bold text-gray-900">基本資料</h1>
             <p className="text-sm text-gray-400 mt-0.5">{store?.name}</p>
           </div>
-          <button
-            onClick={save}
-            disabled={saving}
-            className="bg-blue-600 text-white px-5 py-2 rounded-xl text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors"
-          >
+          <button onClick={save} disabled={saving} className="lp-btn-primary px-5 py-2 text-sm">
             {saving ? '儲存中...' : saved ? '✓ 已儲存' : '儲存'}
           </button>
         </div>
 
+        {/* Completeness */}
+        <div className="lp-card p-4 mb-5">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-semibold text-gray-800">關鍵資料完整度</span>
+            <span className={`text-sm font-semibold ${overallPct === 100 ? 'text-brand-teal' : 'text-gray-600'}`}>{filledCount} / {KEY_FIELDS.length}</span>
+          </div>
+          <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+            <div className={`h-full rounded-full ${overallPct === 100 ? 'bg-brand-teal' : 'bg-accent'}`} style={{ width: `${overallPct}%` }} />
+          </div>
+        </div>
+
         {/* Tabs */}
-        <div className="flex gap-1 bg-white rounded-xl border border-gray-200 p-1 w-fit mb-6">
+        <div className="flex gap-1 bg-white rounded-xl border border-gray-200 p-1 w-full sm:w-fit mb-5 overflow-x-auto">
           {TABS.map(t => (
             <button key={t.key} onClick={() => setActiveTab(t.key)}
-              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${activeTab === t.key ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'}`}>
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${activeTab === t.key ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'}`}>
               {t.label}
             </button>
           ))}
         </div>
 
-        <div className="bg-white rounded-2xl border border-gray-200 p-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {fields.map(field => {
-              const isTextarea = 'textarea' in field && field.textarea
-              const fieldVal = String(val(field.key))
-
-              return (
-                <div key={field.key} className={isTextarea ? 'sm:col-span-2' : ''}>
-                  <label className="text-sm font-medium text-gray-700">
-                    {field.label}
-                    {'required' in field && field.required && <span className="text-red-500 ml-0.5">*</span>}
-                  </label>
-                  <div className="mt-1">
-                    {isTextarea ? (
-                      <textarea
-                        rows={3}
-                        className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                        value={fieldVal}
-                        onChange={e => set(field.key, e.target.value)}
-                      />
-                    ) : (
-                      <input
-                        type={'type' in field ? field.type as string : 'text'}
-                        className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        value={fieldVal}
-                        onChange={e => set(field.key, e.target.value)}
-                      />
-                    )}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-
-          {/* 其他聯絡人（contacts tab 限定） */}
-          {activeTab === 'contacts' && (
-            <div className="mt-6 pt-5 border-t border-gray-100">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-gray-700">其他聯絡人</h3>
-                {!adding && (
-                  <button
-                    onClick={() => { setAdding(true); setAddDraft(EMPTY_CONTACT) }}
-                    className="text-xs text-blue-600 hover:text-blue-700 font-medium"
-                  >
-                    ＋ 新增
-                  </button>
-                )}
+        {/* 基本資料 */}
+        {activeTab === 'basic' && (
+          <div className="space-y-4">
+            {BASIC_SECTIONS.map(renderSection)}
+            <div className="lp-card p-5">
+              <h3 className="text-sm font-semibold text-gray-800 mb-4">銀行帳戶</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+                {renderField({ key: 'bank_name', label: '銀行' })}
+                {renderField({ key: 'bank_branch', label: '分行' })}
+                {renderField({ key: 'bank_account', label: '帳號' })}
               </div>
+              {photoField('存摺照片', 'bankbook_photo')}
+            </div>
+            {renderSection({ title: '備註', fields: [{ key: 'notes', label: '備註', textarea: true }] })}
+          </div>
+        )}
 
-              <div className="space-y-2">
-                {contacts.map(contact =>
-                  editingContactId === contact.id ? (
-                    <div key={contact.id} className="border border-blue-200 rounded-xl p-3 space-y-2 bg-blue-50/40">
-                      <input className={inputCls} placeholder="姓名 *" autoFocus
-                        value={editDraft.name} onChange={e => setEditDraft(d => ({ ...d, name: e.target.value }))} />
-                      <input className={inputCls} placeholder="電話"
-                        value={editDraft.phone} onChange={e => setEditDraft(d => ({ ...d, phone: e.target.value }))} />
-                      <input className={inputCls} placeholder="LINE ID / 電話"
-                        value={editDraft.line_id} onChange={e => setEditDraft(d => ({ ...d, line_id: e.target.value }))} />
-                      <div className="flex gap-2 pt-1">
-                        <button onClick={() => setEditingContactId(null)}
-                          className="flex-1 border border-gray-200 text-gray-600 py-1.5 rounded-lg text-xs hover:bg-gray-50 transition-colors">
-                          取消
-                        </button>
-                        <button onClick={saveEdit} disabled={contactSaving || !editDraft.name.trim()}
-                          className="flex-1 bg-blue-600 text-white py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50 transition-colors">
-                          {contactSaving ? '儲存中...' : '儲存'}
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div key={contact.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl group">
-                      <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-sm font-bold text-indigo-600 shrink-0">
-                        {contact.name[0]}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-gray-900">{contact.name}</p>
-                        <div className="flex flex-wrap gap-x-3 mt-0.5">
-                          {contact.phone && <span className="text-xs text-gray-500">📞 {contact.phone}</span>}
-                          {contact.line_id && <span className="text-xs text-green-600">LINE {contact.line_id}</span>}
-                        </div>
-                      </div>
-                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                        <button onClick={() => startEdit(contact)}
-                          className="p-1.5 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-white transition-colors">
-                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                          </svg>
-                        </button>
-                        <button onClick={() => deleteContact(contact.id)}
-                          className="p-1.5 text-gray-400 hover:text-red-500 rounded-lg hover:bg-white transition-colors">
-                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                          </svg>
-                        </button>
-                      </div>
-                    </div>
-                  )
-                )}
+        {/* 帳密 · POS · 支付 */}
+        {activeTab === 'accounts' && (
+          <div className="space-y-4">
+            {POS_SECTIONS.map(renderSection)}
+            <PaymentList storeId={id} />
+          </div>
+        )}
 
-                {contacts.length === 0 && !adding && (
-                  <p className="text-sm text-gray-400 text-center py-4">尚無其他聯絡人</p>
-                )}
-
-                {/* 新增表單 */}
-                {adding && (
-                  <div className="border border-dashed border-blue-300 rounded-xl p-3 space-y-2 bg-blue-50/30">
-                    <input className={inputCls} placeholder="姓名 *" autoFocus
-                      value={addDraft.name} onChange={e => setAddDraft(d => ({ ...d, name: e.target.value }))} />
-                    <input className={inputCls} placeholder="電話"
-                      value={addDraft.phone} onChange={e => setAddDraft(d => ({ ...d, phone: e.target.value }))} />
-                    <input className={inputCls} placeholder="LINE ID / 電話"
-                      value={addDraft.line_id} onChange={e => setAddDraft(d => ({ ...d, line_id: e.target.value }))} />
-                    <div className="flex gap-2 pt-1">
-                      <button onClick={() => { setAdding(false); setAddDraft(EMPTY_CONTACT) }}
-                        className="flex-1 border border-gray-200 text-gray-600 py-1.5 rounded-lg text-xs hover:bg-gray-50 transition-colors">
-                        取消
-                      </button>
-                      <button onClick={addContact} disabled={contactSaving || !addDraft.name.trim()}
-                        className="flex-1 bg-blue-600 text-white py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50 transition-colors">
-                        {contactSaving ? '新增中...' : '新增'}
-                      </button>
-                    </div>
-                  </div>
-                )}
+        {/* 聯絡窗口 */}
+        {activeTab === 'contacts' && (
+          <div className="space-y-4">
+            <div className="lp-card p-5">
+              <h3 className="text-sm font-semibold text-gray-800 mb-4">負責人</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                {renderField({ key: 'owner_name', label: '負責人姓名' })}
+                {renderField({ key: 'owner_phone', label: '負責人電話' })}
+                {renderField({ key: 'owner_id_number', label: '身分證字號' })}
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {photoField('身分證正面', 'owner_id_front')}
+                {photoField('身分證反面', 'owner_id_back')}
               </div>
             </div>
-          )}
-        </div>
+
+            <StaffList storeId={id} />
+
+            {CONTACT_SECTIONS.map(renderSection)}
+          </div>
+        )}
       </div>
     </div>
   )
