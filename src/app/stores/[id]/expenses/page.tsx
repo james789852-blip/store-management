@@ -379,18 +379,31 @@ export default function ExpensesPage() {
               const meta = catMeta(exp.category)
               return (
                 <div key={exp.id} className="lp-card overflow-hidden">
-                  <button
+                  <div
                     onClick={() => setExpandedId(isExpanded ? null : exp.id)}
-                    className={`w-full flex items-center gap-3 p-3 sm:p-3.5 text-left transition-colors ${isExpanded ? 'bg-accent-tint/40' : 'hover:bg-gray-50'}`}
+                    className={`w-full flex items-center gap-3 p-3 sm:p-3.5 cursor-pointer transition-colors ${isExpanded ? 'bg-accent-tint/40' : 'hover:bg-gray-50'}`}
                   >
                     <div className="w-11 h-11 rounded-xl flex items-center justify-center text-xl shrink-0" style={{ background: meta.bg }}>{meta.icon}</div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-900 truncate">{exp.name}</p>
                       <p className="text-xs text-gray-400 truncate">{[exp.vendor, exp.pay_method, exp.date.slice(5)].filter(Boolean).join(' · ')}</p>
                     </div>
-                    <div className="text-right shrink-0">
+                    <div className="shrink-0 flex flex-col items-end gap-1" onClick={e => e.stopPropagation()}>
                       <p className="text-[15px] font-semibold text-gray-900 whitespace-nowrap">NT$ {exp.total.toLocaleString()}</p>
-                      <span className={`inline-block mt-0.5 text-[10px] px-2 py-0.5 rounded-full font-medium ${PAY_BADGE[exp.pay_status]}`}>{PAY_STATUS_LABEL[exp.pay_status]}</span>
+                      <div className="flex gap-1">
+                        <button
+                          title="點一下切換付款狀態"
+                          onClick={() => supabase.from('expenses').update({ pay_status: exp.pay_status === 'paid' ? 'pending' : 'paid' }).eq('id', exp.id).then(() => load())}
+                          className={`text-[10px] px-2 py-0.5 rounded-full font-medium transition-opacity hover:opacity-80 ${PAY_BADGE[exp.pay_status]}`}>
+                          {PAY_STATUS_LABEL[exp.pay_status]}
+                        </button>
+                        <button
+                          title="點一下切換請款狀態"
+                          onClick={() => supabase.from('expenses').update({ reimbursed: !exp.reimbursed }).eq('id', exp.id).then(() => load())}
+                          className={`text-[10px] px-2 py-0.5 rounded-full font-medium transition-colors ${exp.reimbursed ? 'bg-brand-teal-tint text-brand-teal' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}>
+                          {exp.reimbursed ? '已請款' : '未請款'}
+                        </button>
+                      </div>
                     </div>
                     {exp.photos?.length > 0 && (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -398,7 +411,7 @@ export default function ExpensesPage() {
                         className="w-11 h-11 rounded-lg object-cover shrink-0 cursor-zoom-in hover:opacity-80 transition-opacity" />
                     )}
                     <svg className={`w-4 h-4 text-gray-300 shrink-0 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
-                  </button>
+                  </div>
 
                   {isExpanded && (
                     <div className="px-3.5 pb-4 pt-1 border-t border-gray-100">
