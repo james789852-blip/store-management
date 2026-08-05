@@ -80,10 +80,6 @@ function addDaysStr(dateStr: string, n: number): string {
   return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`
 }
 
-function trunc(s: string, n: number): string {
-  return s.length > n ? s.slice(0, n) + '…' : s
-}
-
 function todoTimeLabel(dueDate: string | null, today: string): { text: string; cls: string } {
   if (!dueDate) return { text: '', cls: '' }
   const diff = differenceInDays(parseLocal(dueDate), parseLocal(today))
@@ -644,23 +640,14 @@ export default function OverviewPage() {
               {logs.length === 0 ? (
                 <p className="text-sm text-gray-400 py-4 text-center">尚無施工日誌</p>
               ) : (
-                <div className="space-y-2">
-                  {logs.map(log => {
-                    const content = log.progress || log.issue || ''
-                    return (
-                      <Link key={log.id} href={`/stores/${id}/log`} className="flex items-start gap-3 p-2.5 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors">
-                        <div className="shrink-0 text-center" style={{ minWidth: 30 }}>
-                          <p className="text-base font-bold text-gray-800 leading-none">{log.date.slice(8)}</p>
-                          <p className="text-[10px] text-gray-400 mt-0.5">{log.date.slice(5, 7)}月</p>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold text-gray-700 truncate">{log.task_name || '施工日誌'}{log.vendor ? ` · ${log.vendor}` : ''}</p>
-                          {content && <p className="text-xs text-gray-400 mt-0.5 truncate">{trunc(content, 40)}</p>}
-                        </div>
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold shrink-0 ${LOG_BADGE[log.status]}`}>{LOG_STATUS_LABEL[log.status]}</span>
-                      </Link>
-                    )
-                  })}
+                <div className="space-y-1.5">
+                  {logs.slice(0, 3).map(log => (
+                    <Link key={log.id} href={`/stores/${id}/log`} className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-gray-50 transition-colors">
+                      <span className="shrink-0 text-xs text-gray-400 tabular-nums" style={{ minWidth: 34 }}>{log.date.slice(5)}</span>
+                      <span className="flex-1 text-sm text-gray-700 truncate">{log.task_name || '施工日誌'}{log.vendor ? ` · ${log.vendor}` : ''}</span>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0 ${LOG_BADGE[log.status]}`}>{LOG_STATUS_LABEL[log.status]}</span>
+                    </Link>
+                  ))}
                 </div>
               )}
             </SectionCard>
