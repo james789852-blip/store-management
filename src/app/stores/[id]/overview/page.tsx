@@ -73,6 +73,13 @@ function fmtPct(n: number): string {
   return String(Math.round(n * 10) / 10)
 }
 
+function addDaysStr(dateStr: string, n: number): string {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  const dt = new Date(y, m - 1, d)
+  dt.setDate(dt.getDate() + n)
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`
+}
+
 function trunc(s: string, n: number): string {
   return s.length > n ? s.slice(0, n) + '…' : s
 }
@@ -179,6 +186,10 @@ export default function OverviewPage() {
   const [uploadingCover, setUploadingCover] = useState(false)
   const [uploadingSite, setUploadingSite] = useState(false)
   const [photoView, setPhotoView] = useState<number | null>(null)
+  const [unpaidAmount, setUnpaidAmount] = useState(0)
+  const [expiringDocs, setExpiringDocs] = useState<string[]>([])
+  const [pendingGov, setPendingGov] = useState<string[]>([])
+  const [openingUndone, setOpeningUndone] = useState<string[]>([])
 
   useEffect(() => { loadAll() }, [id]) // eslint-disable-line
 
@@ -192,6 +203,9 @@ export default function OverviewPage() {
       { data: invData },
       { data: logData },
       { data: budgetData },
+      { data: docData },
+      { data: govData },
+      { data: openData },
     ] = await Promise.all([
       supabase.from('stores').select('*').eq('id', id).single(),
       supabase.from('build_schedules')
@@ -218,6 +232,9 @@ export default function OverviewPage() {
         .select('investor_percentage')
         .eq('store_id', id)
         .single(),
+      supabase.from('documents').select('name, exp_date, status').eq('store_id', id),
+      supabase.from('gov_applications').select('name, status, tags').eq('store_id', id),
+      supabase.from('opening_checklist').select('name, is_required, done').eq('store_id', id),
     ])
 
     if (storeData) { setStore(storeData as Store); setForm(storeData as Store) }
@@ -227,6 +244,27 @@ export default function OverviewPage() {
     const paid = (expData || []).filter(e => e.pay_status === 'paid').reduce((s, e) => s + (e.total ?? 0), 0)
     const partial = (expData || []).filter(e => e.pay_status === 'partial').reduce((s, e) => s + (e.deposit_amount ?? 0), 0)
     setTotalExpenses(paid + partial)
+
+    // 待付款:未付=全額、部分=尾款
+    const unpaid = (expData || []).reduce((s, e) => {
+      if (e.pay_status === 'paid') return s
+      if (e.pay_status === 'partial') return s + Math.max(0, (e.total ?? 0) - (e.deposit_amount ?? 0))
+      return s + (e.total ?? 0)
+    }, 0)
+    setUnpaidAmount(unpaid)
+
+    // 文件即將到期(30 天內)或已過期
+    setExpiringDocs((docData || []).filter((d: { exp_date: string | null; status: string }) => {
+      if (d.status === 'expired' || d.status === 'expiring') return true
+      if (d.exp_date) return Math.round((new Date(d.exp_date).getTime() - new Date(today).getTime()) / 86400000) <= 30
+      return false
+    }).map((d: { name: string }) => d.name))
+
+    // 未開始的政府申請
+    setPendingGov((govData || []).filter((g: { status: string }) => g.status === 'notyet').map((g: { name: string }) => g.name))
+
+    // 開幕必要項未完成
+    setOpeningUndone((openData || []).filter((o: { is_required: boolean; done: boolean }) => o.is_required && !o.done).map((o: { name: string }) => o.name))
 
     setTotalInvPct((invData || []).reduce((s, i) => s + (i.percentage ?? 0), 0))
     setTotalInvAmount((invData || []).reduce((s, i) => s + (i.amount ?? 0), 0))
@@ -285,8 +323,8 @@ export default function OverviewPage() {
 
   // ── Computed ──────────────────────────────────────────────────
 
-  const overdueTodos = todos.filter(t => t.due_date && t.due_date < today)
-  const overdueSchs  = schedules.filter(s => s.status === 'overdue')
+  const dueTodos = todos.filter(t => t.due_date && t.due_date <= today)
+  const overdueSchs = schedules.filter(s => s.status === 'overdue' || ((s.status === 'pending' || s.status === 'ongoing') && !!s.end_date && s.end_date < today))
 
   const schDone  = schedules.filter(s => s.status === 'done').length
   const schTotal = schedules.length
@@ -302,6 +340,28 @@ export default function OverviewPage() {
 
   const budgetTotal = store?.total_budget ?? null
   const expensePct = budgetTotal && budgetTotal > 0 ? Math.round((totalExpenses / budgetTotal) * 100) : null
+
+  // 排程健康度:最晚逾期天數 → 預估延誤
+  const maxSlip = overdueSchs.reduce((m, s) => {
+    if (!s.end_date) return m
+    const d = Math.round((new Date(today).getTime() - new Date(s.end_date).getTime()) / 86400000)
+    return Math.max(m, d)
+  }, 0)
+  const projectedOpen = store?.open_date && maxSlip > 0 ? addDaysStr(store.open_date, maxSlip) : (store?.open_date ?? null)
+  const scheduleHealth = daysToOpen === null ? null
+    : maxSlip > 0
+      ? { late: true, text: `落後 ${maxSlip} 天 · 照此進度預計 ${projectedOpen} 開幕(晚 ${maxSlip} 天)` }
+      : { late: false, text: `進度正常 · 預計如期 ${store?.open_date} 開幕` }
+
+  // 需要你處理(只列真的有的,按急迫排序)
+  const openingSoon = daysToOpen !== null && daysToOpen >= 0 && daysToOpen <= 30
+  const attention: { icon: string; bg: string; text: string; href: string }[] = []
+  if (overdueSchs.length) attention.push({ icon: '🔨', bg: '#FCEBEB', text: `${overdueSchs.length} 項工程逾期 — ${overdueSchs.slice(0, 2).map(s => s.task_name).join('、')}${overdueSchs.length > 2 ? '…' : ''}`, href: 'schedule' })
+  if (dueTodos.length) attention.push({ icon: '📋', bg: '#FAEEDA', text: `${dueTodos.length} 項待辦到期 — ${dueTodos.slice(0, 2).map(t => t.title).join('、')}${dueTodos.length > 2 ? '…' : ''}`, href: 'todos' })
+  if (expiringDocs.length) attention.push({ icon: '📄', bg: '#E8F2FC', text: `${expiringDocs.length} 份文件即將到期 — ${expiringDocs.slice(0, 2).join('、')}${expiringDocs.length > 2 ? '…' : ''}`, href: 'documents' })
+  if (pendingGov.length) attention.push({ icon: '🏛️', bg: '#EDEEF8', text: `${pendingGov.length} 項政府申請未開始 — ${pendingGov.slice(0, 2).join('、')}${pendingGov.length > 2 ? '…' : ''}`, href: 'gov' })
+  if (unpaidAmount > 0) attention.push({ icon: '💰', bg: '#FBF1E1', text: `待付款 ${fmtMoneyShort(unpaidAmount)}`, href: 'expenses' })
+  if (openingSoon && openingUndone.length) attention.push({ icon: '🎉', bg: '#E6F6F1', text: `開幕前還有 ${openingUndone.length} 項必要項未完成`, href: 'opening' })
 
   const sortedTodos = [...todos].sort((a, b) => {
     const rank = (t: OvTodo) => t.due_date && t.due_date < today ? 0 : t.due_date === today ? 1 : 2
@@ -329,7 +389,6 @@ export default function OverviewPage() {
   const passport = buildPassport(store)
   const passportFilled = passport.filter(p => p.filled).length
 
-  const hasAlert = overdueTodos.length > 0 || overdueSchs.length > 0
 
   const photoFeed = logs
     .flatMap(l => (l.photos || []).map(url => ({ url, date: l.date, task: l.task_name })))
@@ -421,7 +480,12 @@ export default function OverviewPage() {
             </div>
             <div className="min-w-0">
               <p className="text-[15px] font-semibold text-gray-900">{warmCopy}</p>
-              <p className="text-xs text-gray-500 mt-0.5">{schDone} / {schTotal} 工項完成{store.open_date ? ` · 預計 ${store.open_date} 開幕` : ''}</p>
+              <p className="text-xs text-gray-500 mt-0.5">{schDone} / {schTotal} 工項完成</p>
+              {scheduleHealth && (
+                <p className={`text-xs font-medium mt-1 ${scheduleHealth.late ? 'text-brand-red' : 'text-brand-teal'}`}>
+                  {scheduleHealth.late ? '⚠ ' : '✓ '}{scheduleHealth.text}
+                </p>
+              )}
             </div>
           </div>
         )}
@@ -438,17 +502,28 @@ export default function OverviewPage() {
           </div>
         )}
 
-        {/* ── Alert (only if overdue) ── */}
-        {hasAlert && (
-          <Link href={`/stores/${id}/todos`} className="flex items-center gap-3 px-4 py-3 rounded-2xl border border-brand-red-tint bg-brand-red-tint/50 hover:bg-brand-red-tint transition-colors">
-            <span className="w-6 h-6 rounded-full bg-brand-red flex items-center justify-center shrink-0">
-              <span className="text-white text-sm font-bold leading-none">!</span>
-            </span>
-            <p className="text-sm font-semibold text-brand-red flex-1">
-              {[overdueSchs.length > 0 ? `${overdueSchs.length} 項逾期工程` : '', overdueTodos.length > 0 ? `${overdueTodos.length} 項逾期待辦` : ''].filter(Boolean).join('、')}，需要處理
-            </p>
-            <span className="text-xs text-brand-red font-medium shrink-0">前往 →</span>
-          </Link>
+        {/* ── 需要你處理 ── */}
+        {attention.length > 0 ? (
+          <div className="lp-card overflow-hidden" style={{ borderColor: '#F0997B' }}>
+            <div className="flex items-center justify-between px-4 py-2.5" style={{ background: '#FAECE7' }}>
+              <span className="text-sm font-bold" style={{ color: '#993C1D' }}>🔔 需要你處理（{attention.length}）</span>
+              <span className="text-[11px]" style={{ color: '#B4785F' }}>點任一項跳過去</span>
+            </div>
+            <div className="p-1.5">
+              {attention.map((a, i) => (
+                <Link key={i} href={`/stores/${id}/${a.href}`} className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl hover:bg-gray-50 transition-colors">
+                  <span className="w-7 h-7 rounded-lg flex items-center justify-center text-sm shrink-0" style={{ background: a.bg }}>{a.icon}</span>
+                  <span className="flex-1 text-[13px] text-gray-700 min-w-0 truncate">{a.text}</span>
+                  <svg className="w-4 h-4 text-gray-300 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+                </Link>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="lp-card px-4 py-3 flex items-center gap-2.5">
+            <span className="text-lg">✅</span>
+            <p className="text-sm font-medium text-brand-teal">目前沒有待處理的事，一切順利</p>
+          </div>
         )}
 
         {/* ── 下一步引導卡 ── */}
@@ -612,29 +687,24 @@ export default function OverviewPage() {
               )}
             </SectionCard>
 
-            <div className="lp-card p-5">
-              <div className="flex items-center justify-between mb-1">
-                <h2 className="text-sm font-semibold text-gray-800">店面資料護照</h2>
-                <span className={`text-xs font-semibold ${passportFilled === passport.length ? 'text-brand-teal' : 'text-gray-500'}`}>{passportFilled} / {passport.length} 完整</span>
+            <Link href={`/stores/${id}/basic`} className="lp-card lp-card-hover p-5 flex items-center gap-4">
+              <div className="relative shrink-0" style={{ width: 48, height: 48 }}>
+                <svg viewBox="0 0 36 36" style={{ width: 48, height: 48, transform: 'rotate(-90deg)' }}>
+                  <circle cx="18" cy="18" r="15.5" fill="none" stroke="#EEEDE8" strokeWidth="4" />
+                  <circle cx="18" cy="18" r="15.5" fill="none" stroke={passportFilled === passport.length ? '#1D9E75' : '#E0912A'} strokeWidth="4" strokeLinecap="round"
+                    strokeDasharray="97.4" strokeDashoffset={97.4 * (1 - passportFilled / passport.length)} />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center text-[11px] font-bold text-gray-700">{passportFilled}/{passport.length}</div>
               </div>
-              <p className="text-[11px] text-gray-400 mb-3">建店該保留的關鍵資訊，一眼看出還缺什麼</p>
-              <div className="flex flex-wrap gap-1.5">
-                {passport.map(p => (
-                  <Link
-                    key={p.label}
-                    href={`/stores/${id}/${p.href}`}
-                    className={`inline-flex items-center gap-1 text-[11px] rounded-full px-2.5 py-1 transition-opacity hover:opacity-75 ${
-                      p.filled ? 'bg-brand-teal-tint text-brand-teal' : 'bg-brand-red-tint text-brand-red'
-                    }`}
-                  >
-                    {p.filled
-                      ? <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                      : <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path strokeLinecap="round" d="M12 8v4M12 16h.01" /></svg>}
-                    {p.label}
-                  </Link>
-                ))}
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-gray-800">基本資料</p>
+                <p className="text-xs text-gray-400 mt-0.5">店面關鍵資訊(帳密、租約、窗口…){passportFilled < passport.length ? `,還有 ${passport.length - passportFilled} 項未填` : ' 已填齊'}</p>
               </div>
-            </div>
+              <span className="text-xs text-accent font-medium shrink-0 flex items-center gap-0.5">
+                查看 / 編輯
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+              </span>
+            </Link>
           </div>
 
         </div>
