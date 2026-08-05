@@ -305,7 +305,7 @@ export default function GovPage() {
             {sorted.map(app => (
               <div
                 key={app.id}
-                className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex gap-3"
+                className="lp-card lp-card-hover p-4 flex gap-3"
               >
                 {/* Status icon */}
                 <div className="shrink-0 pt-0.5">{STATUS_ICON[app.status]}</div>
@@ -352,7 +352,7 @@ export default function GovPage() {
                 <div className="shrink-0 flex flex-col gap-1 items-end">
                   <button
                     onClick={() => openEdit(app)}
-                    className="text-xs text-gray-400 hover:text-indigo-600 px-2 py-1 rounded transition-colors"
+                    className="text-xs text-gray-400 hover:text-accent px-2 py-1 rounded transition-colors"
                   >
                     編輯
                   </button>

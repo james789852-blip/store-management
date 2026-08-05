@@ -35,6 +35,13 @@ function emptyForm(): DocForm {
 }
 
 
+const DOC_META: Record<DocType, { icon: string; bg: string }> = {
+  lease:   { icon: '🏠', bg: '#EDEEF8' },
+  consent: { icon: '✍️', bg: '#E8F2FC' },
+  permit:  { icon: '📜', bg: '#E6F6F1' },
+  other:   { icon: '📄', bg: '#F1EFE8' },
+}
+
 function daysUntil(dateStr: string): number {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
@@ -266,8 +273,9 @@ export default function DocumentsPage() {
                 : ''
 
               return (
-                <div key={doc.id} className="bg-white rounded-2xl border border-gray-200 p-5 group hover:shadow-sm transition-shadow">
-                  <div className="flex items-start justify-between gap-4">
+                <div key={doc.id} className="lp-card lp-card-hover p-4 group">
+                  <div className="flex items-start gap-3">
+                    <div className="w-11 h-11 rounded-xl flex items-center justify-center text-xl shrink-0" style={{ background: DOC_META[doc.doc_type].bg }}>{DOC_META[doc.doc_type].icon}</div>
                     <div className="flex-1 min-w-0">
                       {/* Name + badges */}
                       <div className="flex flex-wrap items-center gap-2 mb-2">

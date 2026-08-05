@@ -652,13 +652,16 @@ export default function InvestorsPage() {
                                     期限 {inv.pay_deadline}
                                   </span>
                                 )}
+                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${INVESTOR_PAY_BADGE[inv.pay_status]}`}>
+                                  {INVESTOR_PAY_STATUS_LABEL[inv.pay_status]}
+                                </span>
                               </div>
                               {(inv.phone || inv.email) && (
                                 <p className="text-xs text-gray-400 mt-0.5">{inv.phone}{inv.phone && inv.email ? ' · ' : ''}{inv.email}</p>
                               )}
                             </div>
                             <div className="flex items-center gap-1 flex-shrink-0">
-                              <button onClick={() => openEdit(inv)} className="text-xs border border-gray-200 rounded-lg px-2 py-1 text-gray-500 hover:text-indigo-600">編輯</button>
+                              <button onClick={() => openEdit(inv)} className="text-xs border border-gray-200 rounded-lg px-2 py-1 text-gray-500 hover:text-accent">編輯</button>
                               <button onClick={() => setDeleteConfirm(inv.id)} className="text-xs border border-gray-200 rounded-lg px-2 py-1 text-gray-500 hover:text-red-500">刪除</button>
                             </div>
                           </div>
@@ -792,7 +795,7 @@ export default function InvestorsPage() {
                 <div className="flex items-center gap-1.5">
                   <a href={g.contractUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-600 hover:underline">查看</a>
                   <button onClick={() => triggerGroupUpload(g)} disabled={isGroupUploading(g)}
-                    className="text-xs px-2 py-0.5 border border-gray-200 rounded-lg text-gray-500 hover:border-indigo-400 hover:text-indigo-600 disabled:opacity-50 transition-colors">
+                    className="text-xs px-2 py-0.5 border border-gray-200 rounded-lg text-gray-500 hover:border-indigo-400 hover:text-accent disabled:opacity-50 transition-colors">
                     {isGroupUploading(g) ? '上傳中...' : '換檔'}
                   </button>
                   <button onClick={() => quickUpdateGroup(g.ids, { contract_url: null })}
@@ -800,7 +803,7 @@ export default function InvestorsPage() {
                 </div>
               ) : (
                 <button onClick={() => triggerGroupUpload(g)} disabled={isGroupUploading(g)}
-                  className="text-xs px-2 py-1 border border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-indigo-400 hover:text-indigo-600 disabled:opacity-50 transition-colors">
+                  className="text-xs px-2 py-1 border border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-indigo-400 hover:text-accent disabled:opacity-50 transition-colors">
                   {isGroupUploading(g) ? '上傳中...' : '+ 上傳'}
                 </button>
               )
