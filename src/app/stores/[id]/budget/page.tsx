@@ -140,7 +140,7 @@ export default function BudgetPage() {
                 <div className="flex gap-8 mt-3.5">
                   <div><p className="text-[11px] text-gray-500">{remaining >= 0 ? '預算剩餘' : '超支金額'}</p><p className={`text-base font-bold ${remaining >= 0 ? 'text-gray-900' : 'text-brand-red'}`}>{fmtM(Math.abs(remaining))}</p></div>
                   <div><p className="text-[11px] text-gray-500">待付款</p><p className="text-base font-bold text-accent">{fmtM(pending)}</p></div>
-                  <div><p className="text-[11px] text-gray-500">總估值</p><p className="text-base font-bold text-gray-900">{fmtM(totalValuation)}</p></div>
+                  <div><p className="text-[11px] text-gray-500">實際支出</p><p className="text-base font-bold text-gray-900">{fmtM(totalActual)}</p></div>
                 </div>
               </div>
             ) : (
