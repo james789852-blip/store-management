@@ -7,15 +7,21 @@ import { supabase } from '@/lib/supabase'
 import type { BudgetSettings, Expense } from '@/types'
 
 const BUDGET_CATEGORIES = ['租約', '工程', '設備', '行政', '水電', '貨商', '文具雜支', '預備金'] as const
-const CAT_COLORS: Record<string, string> = {
-  '租約': 'bg-blue-100 text-blue-700',
-  '工程': 'bg-amber-100 text-amber-700',
-  '設備': 'bg-purple-100 text-purple-700',
-  '行政': 'bg-indigo-100 text-indigo-700',
-  '水電': 'bg-teal-100 text-teal-700',
-  '貨商': 'bg-orange-100 text-orange-700',
-  '文具雜支': 'bg-gray-100 text-gray-600',
-  '預備金': 'bg-green-100 text-green-700',
+const CAT_ICON: Record<string, { icon: string; color: string }> = {
+  '租約':     { icon: '🏠', color: '#534AB7' },
+  '工程':     { icon: '🔨', color: '#B45309' },
+  '設備':     { icon: '🧊', color: '#185FA5' },
+  '行政':     { icon: '📋', color: '#5F5E5A' },
+  '水電':     { icon: '💡', color: '#BA7517' },
+  '貨商':     { icon: '📦', color: '#1D9E75' },
+  '文具雜支': { icon: '✏️', color: '#888780' },
+  '預備金':   { icon: '🪙', color: '#639922' },
+}
+
+function fmtM(n: number): string {
+  if (n >= 1e8) return `NT$ ${(n / 1e8).toFixed(2)} 億`
+  if (n >= 1e4) return `NT$ ${(n / 1e4).toFixed(n >= 1e6 ? 0 : 1)} 萬`
+  return `NT$ ${n.toLocaleString()}`
 }
 
 export default function BudgetPage() {
@@ -26,14 +32,19 @@ export default function BudgetPage() {
   const [form, setForm] = useState({ sqft: '', price_per_sqft: '75000' })
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [schDone, setSchDone] = useState(0)
+  const [schTotal, setSchTotal] = useState(0)
 
   useEffect(() => { load() }, [id]) // eslint-disable-line
 
   async function load() {
-    const [{ data: s }, { data: e }] = await Promise.all([
+    const [{ data: s }, { data: e }, { data: sch }] = await Promise.all([
       supabase.from('budget_settings').select('*').eq('store_id', id).maybeSingle(),
       supabase.from('expenses').select('category, total, pay_status').eq('store_id', id),
+      supabase.from('build_schedules').select('status').eq('store_id', id),
     ])
+    setSchTotal((sch || []).length)
+    setSchDone((sch || []).filter((x: { status: string }) => x.status === 'done').length)
     if (s) {
       setSettings(s)
       // DB uses ping_count / price_per_ping / released_pct
@@ -57,6 +68,17 @@ export default function BudgetPage() {
   const pending = totalActual - paid
   const remaining = totalBudget - totalActual
   const onePercent = totalValuation * 0.01
+
+  const budgetPct = totalBudget > 0 ? Math.round((totalActual / totalBudget) * 100) : 0
+  const schPct = schTotal > 0 ? Math.round((schDone / schTotal) * 100) : 0
+  const healthColor = remaining < 0 ? '#D94F4F' : budgetPct >= 85 ? '#E0912A' : '#1D9E75'
+  const verdict = remaining < 0
+    ? { text: `⚠ 已超支 ${fmtM(-remaining)}，請留意`, cls: 'bg-brand-red-tint text-brand-red' }
+    : (budgetPct - schPct > 10)
+      ? { text: `⚠ 支出超前進度(花 ${budgetPct}%、做 ${schPct}%),有超支風險,建議控管`, cls: 'bg-brand-red-tint text-brand-red' }
+      : (schPct - budgetPct > 5)
+        ? { text: `✅ 支出低於進度(花 ${budgetPct}%、做 ${schPct}%),目前很健康`, cls: 'bg-brand-teal-tint text-brand-teal' }
+        : { text: `支出與進度大致同步(花 ${budgetPct}%、做 ${schPct}%),正常`, cls: 'bg-brand-teal-tint text-brand-teal' }
 
   async function saveSettings() {
     setSaving(true)
@@ -105,94 +127,93 @@ export default function BudgetPage() {
 
         {tab === 'overview' && (
           <>
-            <div className="bg-white rounded-2xl border border-gray-200 p-5 mb-6">
-              <h2 className="font-semibold text-gray-900 mb-4">預算計算設定</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-4">
-                <div>
-                  <label className="text-sm font-medium text-gray-700">坪數</label>
-                  <input type="number" className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
-                    value={form.sqft} onChange={e => setForm(f => ({ ...f, sqft: e.target.value }))} placeholder="0" />
+            {/* 預算健康 */}
+            {totalBudget > 0 ? (
+              <div className="lp-card p-5 mb-4">
+                <div className="flex justify-between items-baseline mb-2.5">
+                  <span className="text-sm font-semibold text-gray-800">預算健康</span>
+                  <span className="text-[13px] text-gray-500">已花 <b className="text-gray-900">{fmtM(totalActual)}</b> / {fmtM(totalBudget)} · <b style={{ color: healthColor }}>{budgetPct}%</b></span>
                 </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-700">每坪單價（元）</label>
-                  <input type="number" className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
-                    value={form.price_per_sqft} onChange={e => setForm(f => ({ ...f, price_per_sqft: e.target.value }))} />
+                <div className="h-3.5 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(100, budgetPct)}%`, background: healthColor }} />
                 </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-700">對外募資上限</label>
-                  <div className="mt-1 w-full border border-gray-100 bg-gray-50 rounded-xl px-3 py-2 text-sm text-gray-500">
-                    30%（固定）
+                <div className="flex gap-8 mt-3.5">
+                  <div><p className="text-[11px] text-gray-500">{remaining >= 0 ? '預算剩餘' : '超支金額'}</p><p className={`text-base font-bold ${remaining >= 0 ? 'text-gray-900' : 'text-brand-red'}`}>{fmtM(Math.abs(remaining))}</p></div>
+                  <div><p className="text-[11px] text-gray-500">待付款</p><p className="text-base font-bold text-accent">{fmtM(pending)}</p></div>
+                  <div><p className="text-[11px] text-gray-500">總估值</p><p className="text-base font-bold text-gray-900">{fmtM(totalValuation)}</p></div>
+                </div>
+              </div>
+            ) : (
+              <div className="lp-card p-4 mb-4 text-sm text-gray-500">請先在下方「預算計算設定」填入坪數與每坪單價，才能算出預算。</div>
+            )}
+
+            {/* 花費 vs 進度 */}
+            {totalBudget > 0 && schTotal > 0 && (
+              <div className="lp-card p-5 mb-4" style={{ borderColor: '#9FE1CB' }}>
+                <p className="text-sm font-semibold text-gray-800 mb-3">花費 vs 進度</p>
+                <div className="space-y-2.5">
+                  <div>
+                    <div className="flex justify-between text-xs mb-1"><span className="text-gray-600">💰 預算使用</span><span className="font-medium">{budgetPct}%</span></div>
+                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden"><div className="h-full bg-accent rounded-full" style={{ width: `${Math.min(100, budgetPct)}%` }} /></div>
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-xs mb-1"><span className="text-gray-600">🔨 工程完成</span><span className="font-medium">{schPct}%</span></div>
+                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden"><div className="h-full bg-brand-teal rounded-full" style={{ width: `${schPct}%` }} /></div>
                   </div>
                 </div>
+                <div className={`mt-3 rounded-lg px-3 py-2 text-xs font-medium ${verdict.cls}`}>{verdict.text}</div>
               </div>
-              {sqft > 0 && (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 mb-4 p-3 bg-gray-50 rounded-xl text-sm">
-                  <div><span className="text-gray-400">總預算：</span><span className="font-semibold text-gray-900">NT$ {totalBudget.toLocaleString()}</span></div>
-                  <div><span className="text-gray-400">總估值：</span><span className="font-semibold text-gray-900">NT$ {Math.round(totalValuation).toLocaleString()}</span></div>
-                  <div><span className="text-gray-400">1% 價值：</span><span className="font-semibold text-gray-900">NT$ {Math.round(onePercent).toLocaleString()}</span></div>
+            )}
+
+            {/* 錢花在哪 · 各類別 */}
+            <div className="lp-card p-5 mb-4">
+              <div className="flex justify-between items-center mb-3">
+                <span className="text-sm font-semibold text-gray-800">錢花在哪 · 各類別</span>
+                <Link href={`/stores/${id}/expenses`} className="text-xs text-accent hover:opacity-70">前往費用記錄 →</Link>
+              </div>
+              {totalActual === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-4">尚無費用記錄</p>
+              ) : (
+                <div className="space-y-2.5">
+                  {byCategory.filter(c => c.actual > 0).sort((a, b) => b.actual - a.actual).map(({ cat, actual }) => {
+                    const m = CAT_ICON[cat] || { icon: '💰', color: '#888780' }
+                    const pct = totalActual > 0 ? Math.round((actual / totalActual) * 100) : 0
+                    return (
+                      <div key={cat}>
+                        <div className="flex justify-between text-xs mb-1"><span className="text-gray-600">{m.icon} {cat}</span><span className="font-medium text-gray-900">{fmtM(actual)} · {pct}%</span></div>
+                        <div className="h-2 bg-gray-100 rounded-full overflow-hidden"><div className="h-full rounded-full" style={{ width: `${pct}%`, background: m.color }} /></div>
+                      </div>
+                    )
+                  })}
                 </div>
               )}
-              <button onClick={saveSettings} disabled={saving}
-                className="bg-gray-900 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-gray-800 disabled:opacity-50 transition-colors">
-                {saving ? '儲存中...' : saved ? '✓ 已儲存' : '儲存'}
-              </button>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-              {[
-                { label: '總預算', value: totalBudget, color: 'text-gray-900' },
-                { label: '實際支出', value: totalActual, color: 'text-gray-900' },
-                { label: remaining >= 0 ? '預算剩餘' : '超支金額', value: Math.abs(remaining), color: remaining >= 0 ? 'text-brand-teal' : 'text-brand-red' },
-                { label: '待付款', value: pending, color: 'text-accent' },
-              ].map(card => (
-                <div key={card.label} className="lp-card p-4 min-w-0">
-                  <p className="text-xs text-gray-500 mb-1.5">{card.label}</p>
-                  <p className={`text-lg font-bold ${card.color} truncate`}>NT$ {card.value.toLocaleString()}</p>
+            {/* 預算計算設定(收合) */}
+            <details className="lp-card">
+              <summary className="p-4 text-sm font-medium text-gray-700 cursor-pointer select-none">⚙ 預算計算設定(坪數、每坪單價)</summary>
+              <div className="px-5 pb-5 border-t border-gray-100 pt-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-4">
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">坪數</label>
+                    <input type="number" className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+                      value={form.sqft} onChange={e => setForm(f => ({ ...f, sqft: e.target.value }))} placeholder="0" />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">每坪單價（元）</label>
+                    <input type="number" className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+                      value={form.price_per_sqft} onChange={e => setForm(f => ({ ...f, price_per_sqft: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">對外募資上限</label>
+                    <div className="mt-1 w-full border border-gray-100 bg-gray-50 rounded-xl px-3 py-2 text-sm text-gray-500">30%（固定）</div>
+                  </div>
                 </div>
-              ))}
-            </div>
-
-            <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-              <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-                <h2 className="font-semibold text-gray-900">費用類別明細</h2>
-                <Link href={`/stores/${id}/expenses`} className="text-sm text-accent hover:underline">前往費用記錄 →</Link>
+                <button onClick={saveSettings} disabled={saving} className="lp-btn-primary px-4 py-2 text-sm">
+                  {saving ? '儲存中...' : saved ? '✓ 已儲存' : '儲存'}
+                </button>
               </div>
-              <div className="overflow-x-auto">
-              <table className="w-full min-w-[420px]">
-                <thead className="bg-gray-50">
-                  <tr>{['類別', '實際支出', '佔比'].map(h => <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-gray-500">{h}</th>)}</tr>
-                </thead>
-                <tbody>
-                  {byCategory.map(({ cat, actual }) => (
-                    <tr key={cat} className="border-t border-gray-100 hover:bg-gray-50">
-                      <td className="px-5 py-3"><span className={`text-xs px-2 py-0.5 rounded-full font-medium ${CAT_COLORS[cat]}`}>{cat}</span></td>
-                      <td className="px-5 py-3 text-sm font-medium text-gray-900">{actual > 0 ? `NT$ ${actual.toLocaleString()}` : <span className="text-gray-300">—</span>}</td>
-                      <td className="px-5 py-3">
-                        {actual > 0 && totalActual > 0 ? (
-                          <div className="flex items-center gap-2">
-                            <div className="w-20 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                              <div className="h-full bg-accent rounded-full" style={{ width: `${Math.min(100, (actual / totalActual) * 100)}%` }} />
-                            </div>
-                            <span className="text-xs text-gray-500">{((actual / totalActual) * 100).toFixed(1)}%</span>
-                          </div>
-                        ) : <span className="text-gray-300 text-sm">—</span>}
-                      </td>
-                    </tr>
-                  ))}
-                  {totalActual > 0 && (
-                    <tr className="border-t-2 border-gray-200 bg-gray-50">
-                      <td className="px-5 py-3 text-sm font-semibold text-gray-900">合計</td>
-                      <td className="px-5 py-3 text-sm font-semibold text-gray-900">NT$ {totalActual.toLocaleString()}</td>
-                      <td className="px-5 py-3 text-sm text-gray-400">100%</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-              </div>
-              {totalActual === 0 && (
-                <div className="py-10 text-center text-gray-400 text-sm">尚無費用記錄</div>
-              )}
-            </div>
+            </details>
           </>
         )}
 
