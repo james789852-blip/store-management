@@ -15,6 +15,35 @@ function isImage(url: string) {
   return /\.(jpg|jpeg|png|gif|webp|avif|svg)(\?.*)?$/i.test(url)
 }
 
+// HEIC（iPhone 照片）瀏覽器無法顯示,上傳前用瀏覽器端轉成 JPG
+type Heic2Any = (opts: { blob: Blob; toType?: string; quality?: number }) => Promise<Blob | Blob[]>
+function heicLib(): Heic2Any | undefined {
+  return (window as unknown as { heic2any?: Heic2Any }).heic2any
+}
+function loadHeic(): Promise<Heic2Any | undefined> {
+  return new Promise(resolve => {
+    if (heicLib()) return resolve(heicLib())
+    const s = document.createElement('script')
+    s.src = 'https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js'
+    s.onload = () => resolve(heicLib())
+    s.onerror = () => resolve(undefined)
+    document.head.appendChild(s)
+  })
+}
+async function normalizeFile(file: File): Promise<File> {
+  const isHeic = /\.(heic|heif)$/i.test(file.name) || /heic|heif/i.test(file.type)
+  if (!isHeic) return file
+  const lib = await loadHeic()
+  if (!lib) return file
+  try {
+    const out = await lib({ blob: file, toType: 'image/jpeg', quality: 0.85 })
+    const blob = Array.isArray(out) ? out[0] : out
+    return new File([blob], file.name.replace(/\.(heic|heif)$/i, '.jpg'), { type: 'image/jpeg' })
+  } catch {
+    return file
+  }
+}
+
 function fileName(url: string) {
   const raw = url.split('/').pop() || url
   // Strip timestamp_rand prefix (format: 1234567890_abc123.ext)
@@ -40,7 +69,8 @@ export default function FileUploader({
 
     const urls = multiple ? [...value] : []
 
-    for (const file of toUpload) {
+    for (const raw of toUpload) {
+      const file = await normalizeFile(raw)
       const ext = file.name.split('.').pop()?.toLowerCase() || 'bin'
       const ts = Date.now()
       const rand = Math.random().toString(36).slice(2, 8)
