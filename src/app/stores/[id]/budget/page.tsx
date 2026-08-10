@@ -6,8 +6,6 @@ import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import type { BudgetSettings, BudgetItem } from '@/types'
 
-const PRESET_ITEMS = ['拆除', '泥作', '水電', '木工', '油漆', '空調排煙', '廚房設備', '冷藏冷凍', '招牌', '監視系統', 'POS系統', '家具', '設計', '雜項']
-
 function fmtM(n: number): string {
   if (n >= 1e8) return `NT$ ${(n / 1e8).toFixed(2)} 億`
   if (n >= 1e4) return `NT$ ${(n / 1e4).toFixed(n >= 1e6 ? 0 : 1)} 萬`
@@ -94,8 +92,7 @@ export default function BudgetPage() {
 
   const editor = (
     <div className="border border-accent rounded-xl p-3 space-y-2 bg-accent-tint/40">
-      <input className={inputCls} list="budget-presets" placeholder="項目名稱 *（例:泥作、廚房設備）" value={draft.name} onChange={e => setDraft(d => ({ ...d, name: e.target.value }))} />
-      <datalist id="budget-presets">{PRESET_ITEMS.map(p => <option key={p} value={p} />)}</datalist>
+      <input className={inputCls} autoFocus placeholder="項目名稱 *（自己打,例:泥作、廚房設備）" value={draft.name} onChange={e => setDraft(d => ({ ...d, name: e.target.value }))} />
       <input className={inputCls} type="number" placeholder="預估金額（元）" value={draft.planned_amount} onChange={e => setDraft(d => ({ ...d, planned_amount: e.target.value }))} />
       <div className="flex gap-2 pt-1">
         <button onClick={cancel} className="lp-btn-ghost flex-1 py-1.5 text-xs">取消</button>
