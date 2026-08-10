@@ -469,6 +469,17 @@ export interface StoreStaff {
   updated_at: string
 }
 
+// ── Budget Items（預算編列項目:規劃用）─────────────────────────
+export interface BudgetItem {
+  id: string
+  store_id: string
+  name: string
+  planned_amount: number | null
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
 // ── Store Payments（支付方式:抽成 % + 撥款規則）─────────────────
 export interface StorePayment {
   id: string
