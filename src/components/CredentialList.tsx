@@ -26,19 +26,20 @@ const CATS: { key: CatKey; title: string; hint?: string; icon: string; tone: Ton
   {
     key: 'other', title: '其他帳密', hint: '外送平台、金流後台、社群帳號…都可以加',
     icon: 'M15 7a4 4 0 11-4.9 3.9L4 17v3h3l1-1h2l1-2 2.1-2.1A4 4 0 0015 7z', tone: { bg: '#F1F2F4', fg: '#6B7280' },
-    presets: ['Uber Eats 後台', 'foodpanda 後台', 'LINE 官方帳號', 'Google 商家'],
+    presets: ['Apple ID', 'Apple 密碼', 'Gmail 帳號', 'Gmail 密碼', 'Uber Eats 後台', 'foodpanda 後台', 'LINE 官方帳號'],
   },
 ]
 
 const inputCls = 'w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent'
 
-type Draft = { category: CatKey; label: string; value: string }
+type Draft = { category: CatKey; group_name: string; label: string; value: string }
+const EMPTY: Draft = { category: 'pos', group_name: '', label: '', value: '' }
 
 export default function CredentialList({ storeId, onCountChange }: { storeId: string; onCountChange?: (n: number) => void }) {
   const [rows, setRows] = useState<StoreCredential[]>([])
   const [addCat, setAddCat] = useState<CatKey | null>(null)
   const [editId, setEditId] = useState<string | null>(null)
-  const [draft, setDraft] = useState<Draft>({ category: 'pos', label: '', value: '' })
+  const [draft, setDraft] = useState<Draft>(EMPTY)
   const [busy, setBusy] = useState(false)
   const [copied, setCopied] = useState<string | null>(null)
 
@@ -51,14 +52,20 @@ export default function CredentialList({ storeId, onCountChange }: { storeId: st
     onCountChange?.(list.filter(r => r.value && r.value.trim()).length)
   }
 
-  function startAdd(cat: CatKey) { setEditId(null); setAddCat(cat); setDraft({ category: cat, label: '', value: '' }) }
-  function startEdit(c: StoreCredential) { setAddCat(null); setEditId(c.id); setDraft({ category: c.category as CatKey, label: c.label, value: c.value ?? '' }) }
-  function cancel() { setAddCat(null); setEditId(null); setDraft({ category: 'pos', label: '', value: '' }) }
+  function startAdd(cat: CatKey, group = '') { setEditId(null); setAddCat(cat); setDraft({ ...EMPTY, category: cat, group_name: group }) }
+  function startEdit(c: StoreCredential) { setAddCat(null); setEditId(c.id); setDraft({ category: c.category as CatKey, group_name: c.group_name ?? '', label: c.label, value: c.value ?? '' }) }
+  function cancel() { setAddCat(null); setEditId(null); setDraft(EMPTY) }
 
   async function saveDraft() {
     if (!draft.label.trim()) return
     setBusy(true)
-    const payload = { store_id: storeId, category: draft.category, label: draft.label.trim(), value: draft.value.trim() || null }
+    const payload = {
+      store_id: storeId,
+      category: draft.category,
+      group_name: draft.group_name.trim() || null,
+      label: draft.label.trim(),
+      value: draft.value.trim() || null,
+    }
     if (editId) await supabase.from('store_credentials').update(payload).eq('id', editId)
     else await supabase.from('store_credentials').insert({ ...payload, sort_order: rows.length })
     setBusy(false); cancel(); load()
@@ -75,17 +82,20 @@ export default function CredentialList({ storeId, onCountChange }: { storeId: st
   }
 
   function editor(cat: CatKey) {
-    const preset = CATS.find(c => c.key === cat)!.presets
+    const meta = CATS.find(c => c.key === cat)!
+    const groups = Array.from(new Set(rows.filter(r => r.category === cat).map(r => (r.group_name || '').trim()).filter(Boolean)))
     return (
       <div className="border border-accent rounded-xl p-3 space-y-2 bg-accent-tint/40">
         <div className="flex flex-wrap gap-1.5">
-          {preset.map(p => (
+          {meta.presets.map(p => (
             <button key={p} onClick={() => setDraft(d => ({ ...d, label: p }))}
               className={`text-[11px] px-2 py-1 rounded-full border transition-colors ${draft.label === p ? 'bg-accent text-white border-accent' : 'bg-white text-gray-500 border-gray-200 hover:border-accent'}`}>
               {p}
             </button>
           ))}
         </div>
+        <input className={inputCls} list={`grp-${cat}`} placeholder="群組（選填,例:Apple、Gmail、Uber Eats,同群組會收在一起）" value={draft.group_name} onChange={e => setDraft(d => ({ ...d, group_name: e.target.value }))} />
+        <datalist id={`grp-${cat}`}>{groups.map(g => <option key={g} value={g} />)}</datalist>
         <input className={inputCls} autoFocus placeholder="欄位名稱 *（可自己打,例:前台密碼、PIN 碼、Apple ID）" value={draft.label} onChange={e => setDraft(d => ({ ...d, label: e.target.value }))} />
         <input className={inputCls} placeholder="內容 / 帳號 / 密碼" value={draft.value} onChange={e => setDraft(d => ({ ...d, value: e.target.value }))} />
         <div className="flex gap-2 pt-1">
@@ -96,10 +106,44 @@ export default function CredentialList({ storeId, onCountChange }: { storeId: st
     )
   }
 
+  function row(c: StoreCredential) {
+    if (editId === c.id) return <div key={c.id}>{editor(c.category as CatKey)}</div>
+    return (
+      <div key={c.id} className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 group transition-colors">
+        <span className="text-sm text-gray-500 w-28 sm:w-32 shrink-0 truncate">{c.label}</span>
+        <span className="flex-1 min-w-0 text-sm font-medium text-gray-900 truncate">{c.value || <span className="text-gray-300">未填</span>}</span>
+        {c.value && (
+          <button onClick={() => copy(c.id, c.value!)} className="shrink-0 text-[11px] px-1.5 py-1 rounded-md text-gray-400 hover:text-accent hover:bg-white transition-colors" aria-label="複製">
+            {copied === c.id ? '已複製' : '複製'}
+          </button>
+        )}
+        <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+          <button onClick={() => startEdit(c)} className="p-1.5 text-gray-400 hover:text-accent rounded-lg hover:bg-white transition-colors" aria-label="編輯">
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+          </button>
+          <button onClick={() => remove(c.id)} className="p-1.5 text-gray-400 hover:text-brand-red rounded-lg hover:bg-white transition-colors" aria-label="刪除">
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-4">
       {CATS.map(cat => {
         const items = rows.filter(r => r.category === cat.key)
+        // 依群組排序:先無群組,再依出現順序的各群組
+        const order: string[] = []
+        const map: Record<string, StoreCredential[]> = {}
+        for (const it of items) {
+          const g = (it.group_name || '').trim()
+          if (!(g in map)) { map[g] = []; order.push(g) }
+          map[g].push(it)
+        }
+        const ungrouped = map[''] || []
+        const namedGroups = order.filter(g => g !== '')
+
         return (
           <div key={cat.key} className="lp-card p-5">
             <div className="flex items-center gap-3 mb-3">
@@ -112,31 +156,23 @@ export default function CredentialList({ storeId, onCountChange }: { storeId: st
                 <h3 className="text-sm font-semibold text-gray-800">{cat.title}</h3>
                 {cat.hint && <p className="text-[11px] text-gray-400 mt-0.5 truncate">{cat.hint}</p>}
               </div>
-              {!(addCat === cat.key) && !editId && (
+              {addCat !== cat.key && !editId && (
                 <button onClick={() => startAdd(cat.key)} className="ml-auto text-xs text-accent hover:opacity-70 font-medium shrink-0">＋ 新增欄位</button>
               )}
             </div>
 
-            <div className="space-y-1">
-              {items.map(c => editId === c.id ? (
-                <div key={c.id}>{editor(cat.key)}</div>
-              ) : (
-                <div key={c.id} className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 group transition-colors">
-                  <span className="text-sm text-gray-500 w-28 sm:w-32 shrink-0 truncate">{c.label}</span>
-                  <span className="flex-1 min-w-0 text-sm font-medium text-gray-900 truncate">{c.value || <span className="text-gray-300">未填</span>}</span>
-                  {c.value && (
-                    <button onClick={() => copy(c.id, c.value!)} className="shrink-0 text-[11px] px-1.5 py-1 rounded-md text-gray-400 hover:text-accent hover:bg-white transition-colors" aria-label="複製">
-                      {copied === c.id ? '已複製' : '複製'}
-                    </button>
-                  )}
-                  <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                    <button onClick={() => startEdit(c)} className="p-1.5 text-gray-400 hover:text-accent rounded-lg hover:bg-white transition-colors" aria-label="編輯">
-                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                    </button>
-                    <button onClick={() => remove(c.id)} className="p-1.5 text-gray-400 hover:text-brand-red rounded-lg hover:bg-white transition-colors" aria-label="刪除">
-                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                    </button>
+            <div className="space-y-2">
+              {/* 無群組欄位 */}
+              {ungrouped.length > 0 && <div>{ungrouped.map(row)}</div>}
+
+              {/* 各群組:收在小框裡 */}
+              {namedGroups.map(g => (
+                <div key={g} className="rounded-xl border border-gray-100 overflow-hidden">
+                  <div className="flex items-center justify-between px-3 py-1.5 bg-gray-50">
+                    <span className="text-[11px] font-semibold text-gray-500 tracking-wide">{g}</span>
+                    <button onClick={() => startAdd(cat.key, g)} className="text-[11px] text-accent hover:opacity-70">＋</button>
                   </div>
+                  <div className="p-1">{map[g].map(row)}</div>
                 </div>
               ))}
 

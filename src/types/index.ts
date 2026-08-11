@@ -485,6 +485,7 @@ export interface StoreCredential {
   id: string
   store_id: string
   category: string
+  group_name: string | null
   label: string
   value: string | null
   note: string | null
