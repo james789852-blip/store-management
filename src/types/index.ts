@@ -480,6 +480,19 @@ export interface BudgetItem {
   updated_at: string
 }
 
+// ── Store Credentials（帳密:POS / 網路 / 監視 / 其他,可自訂欄位）─
+export interface StoreCredential {
+  id: string
+  store_id: string
+  category: string
+  label: string
+  value: string | null
+  note: string | null
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
 // ── Store Payments（支付方式:抽成 % + 撥款規則）─────────────────
 export interface StorePayment {
   id: string

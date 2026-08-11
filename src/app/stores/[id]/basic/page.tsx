@@ -8,6 +8,7 @@ import { STORE_STATUS_LABEL } from '@/types'
 import FileUploader from '@/components/FileUploader'
 import StaffList from '@/components/StaffList'
 import PaymentList from '@/components/PaymentList'
+import CredentialList from '@/components/CredentialList'
 
 type FormData = Partial<Omit<Store, 'id' | 'created_at' | 'updated_at'>>
 
@@ -67,27 +68,6 @@ const BASIC_SECTIONS: Section[] = [
   ] },
 ]
 
-const POS_SECTIONS: Section[] = [
-  { title: 'POS 系統', icon: 'pos', tone: 'blue', hint: '不同店可用不同系統（iChef / 肚肚 / 柿子紅…）', fields: [
-    { key: 'pos_system', label: 'POS 系統名稱' },
-    { key: 'pos_front_account', label: '前台帳號' },
-    { key: 'pos_front_password', label: '前台密碼' },
-    { key: 'pos_back_account', label: '後台帳號' },
-    { key: 'pos_back_password', label: '後台密碼' },
-    { key: 'printer_model', label: '出單機型號' },
-  ] },
-  { title: '網路 Wi-Fi', icon: 'wifi', tone: 'teal', fields: [
-    { key: 'wifi_ssid', label: 'Wi-Fi 帳號 / SSID' },
-    { key: 'wifi_password', label: 'Wi-Fi 密碼' },
-  ] },
-  { title: '監視系統', icon: 'cctv', tone: 'red', fields: [
-    { key: 'cctv_ip', label: 'IP / 域名' },
-    { key: 'cctv_port', label: 'HTTP 埠' },
-    { key: 'cctv_account', label: '使用者名稱' },
-    { key: 'cctv_password', label: '密碼' },
-  ] },
-]
-
 const CONTACT_SECTIONS: Section[] = [
   { title: '房東', icon: 'landlord', tone: 'gray', fields: [
     { key: 'landlord_name', label: '房東姓名' },
@@ -101,13 +81,12 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'contacts', label: '聯絡窗口' },
 ]
 
-// 各分頁完整度用的欄位
-const TAB_FIELDS: Record<TabKey, string[]> = {
+// 各分頁完整度用的欄位（帳密頁改用 store_credentials,以筆數計）
+const TAB_FIELDS: Record<'basic' | 'contacts', string[]> = {
   basic: ['name', 'tax_id', 'phone', 'address', 'sqft', 'seats', 'business_hours', 'monthly_rent', 'deposit', 'open_date', 'sign_date', 'lease_end_date', 'bank_name', 'bank_branch', 'bank_account', 'bankbook_photo'],
-  accounts: ['pos_system', 'pos_front_account', 'pos_front_password', 'pos_back_account', 'pos_back_password', 'printer_model', 'wifi_ssid', 'wifi_password', 'cctv_ip', 'cctv_port', 'cctv_account', 'cctv_password'],
   contacts: ['owner_name', 'owner_phone', 'owner_id_number', 'owner_id_front', 'owner_id_back', 'landlord_name', 'landlord_phone'],
 }
-const ALL_KEYS = [...TAB_FIELDS.basic, ...TAB_FIELDS.accounts, ...TAB_FIELDS.contacts]
+const ALL_KEYS = [...TAB_FIELDS.basic, ...TAB_FIELDS.contacts]
 
 function isFilled(v: unknown): boolean {
   return v !== null && v !== undefined && String(v).trim() !== ''
@@ -130,12 +109,17 @@ export default function BasicPage() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [activeTab, setActiveTab] = useState<TabKey>('basic')
+  const [credCount, setCredCount] = useState(0)
 
   useEffect(() => { load() }, [id]) // eslint-disable-line
 
   async function load() {
-    const { data } = await supabase.from('stores').select('*').eq('id', id).single()
+    const [{ data }, { data: creds }] = await Promise.all([
+      supabase.from('stores').select('*').eq('id', id).single(),
+      supabase.from('store_credentials').select('value').eq('store_id', id),
+    ])
     if (data) { setStore(data); setForm(data) }
+    setCredCount((creds || []).filter((c: { value: string | null }) => c.value && c.value.trim()).length)
   }
 
   async function save() {
@@ -300,13 +284,16 @@ export default function BasicPage() {
         <div className="flex gap-1 bg-white rounded-xl border border-gray-200 p-1 w-full sm:w-fit mb-5 overflow-x-auto">
           {TABS.map(t => {
             const active = activeTab === t.key
-            const done = countFilled(TAB_FIELDS[t.key])
-            const total = TAB_FIELDS[t.key].length
+            const isAcc = t.key === 'accounts'
+            const done = isAcc ? credCount : countFilled(TAB_FIELDS[t.key as 'basic' | 'contacts'])
+            const total = isAcc ? 0 : TAB_FIELDS[t.key as 'basic' | 'contacts'].length
+            const badge = isAcc ? `${credCount} 筆` : `${done}/${total}`
+            const complete = isAcc ? credCount > 0 : done === total
             return (
               <button key={t.key} onClick={() => setActiveTab(t.key)}
                 className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${active ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'}`}>
                 {t.label}
-                <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${active ? 'bg-white/20 text-white' : done === total ? 'bg-brand-teal-tint text-brand-teal' : 'bg-gray-100 text-gray-400'}`}>{done}/{total}</span>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${active ? 'bg-white/20 text-white' : complete ? 'bg-brand-teal-tint text-brand-teal' : 'bg-gray-100 text-gray-400'}`}>{badge}</span>
               </button>
             )
           })}
@@ -341,7 +328,7 @@ export default function BasicPage() {
         {/* 帳密 · POS · 支付 */}
         {activeTab === 'accounts' && (
           <div className="space-y-4">
-            {POS_SECTIONS.map(renderSection)}
+            <CredentialList storeId={id} onCountChange={setCredCount} />
             <PaymentList storeId={id} />
           </div>
         )}
