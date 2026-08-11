@@ -87,6 +87,16 @@ function isFilled(v: unknown): boolean {
   return v !== null && v !== undefined && String(v).trim() !== ''
 }
 
+// 解析「11:00 - 21:00」成 [開店, 打烊],給 time 輸入用
+function parseHours(v: string): [string, string] {
+  const parts = v.split(/\s*[-–~～]\s*/)
+  const norm = (t: string) => {
+    const m = t.trim().match(/^(\d{1,2}):(\d{2})/)
+    return m ? `${m[1].padStart(2, '0')}:${m[2]}` : ''
+  }
+  return [norm(parts[0] || ''), norm(parts[1] || '')]
+}
+
 export default function BasicPage() {
   const { id } = useParams<{ id: string }>()
   const [store, setStore] = useState<Store | null>(null)
@@ -121,6 +131,28 @@ export default function BasicPage() {
   function renderField(field: Field) {
     const fieldVal = String(val(field.key))
     const filled = isFilled((form as Record<string, unknown>)[field.key])
+
+    // 營業時間:兩個時間選擇器
+    if (field.key === 'business_hours') {
+      const [openT, closeT] = parseHours(fieldVal)
+      const update = (o: string, c: string) => set('business_hours', [o, c].filter(Boolean).join(' - '))
+      return (
+        <div key={field.key}>
+          <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+            營業時間
+            {!filled && <span className="text-[10px] text-gray-300">未填</span>}
+          </label>
+          <div className="mt-1 flex items-center gap-2">
+            <input type="time" value={openT} onChange={e => update(e.target.value, closeT)}
+              className="flex-1 min-w-0 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
+            <span className="text-gray-400 shrink-0">～</span>
+            <input type="time" value={closeT} onChange={e => update(openT, e.target.value)}
+              className="flex-1 min-w-0 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
+          </div>
+        </div>
+      )
+    }
+
     return (
       <div key={field.key} className={field.textarea ? 'sm:col-span-2' : ''}>
         <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
