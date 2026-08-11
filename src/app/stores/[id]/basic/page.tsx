@@ -28,6 +28,7 @@ const BASIC_SECTIONS: Section[] = [
     { key: 'monthly_rent', label: '月租金', type: 'number' },
     { key: 'deposit', label: '押金', type: 'number' },
     { key: 'open_date', label: '開幕日', type: 'date' },
+    { key: 'sign_date', label: '簽約日', type: 'date' },
     { key: 'lease_end_date', label: '租約到期日', type: 'date' },
   ] },
 ]
@@ -41,21 +42,15 @@ const POS_SECTIONS: Section[] = [
     { key: 'pos_back_password', label: '後台密碼' },
     { key: 'printer_model', label: '出單機型號' },
   ] },
-  { title: '網路', fields: [
-    { key: 'wifi_model', label: 'Wi-Fi 機型' },
-    { key: 'wifi_ssid', label: 'Wi-Fi SSID' },
+  { title: '網路 Wi-Fi', fields: [
+    { key: 'wifi_ssid', label: 'Wi-Fi 帳號 / SSID' },
     { key: 'wifi_password', label: 'Wi-Fi 密碼' },
   ] },
   { title: '監視系統', fields: [
-    { key: 'cctv_brand', label: '監視器品牌' },
-    { key: 'cctv_ip', label: '監視器 IP / 域名' },
-    { key: 'cctv_port', label: '監視器 HTTP 埠' },
-    { key: 'cctv_nickname', label: '設備暱稱' },
+    { key: 'cctv_ip', label: 'IP / 域名' },
+    { key: 'cctv_port', label: 'HTTP 埠' },
     { key: 'cctv_account', label: '使用者名稱' },
-    { key: 'cctv_password', label: '監視器密碼' },
-  ] },
-  { title: '發票機', fields: [
-    { key: 'invoice_machine', label: '電子發票機' },
+    { key: 'cctv_password', label: '密碼' },
   ] },
 ]
 
@@ -63,10 +58,6 @@ const CONTACT_SECTIONS: Section[] = [
   { title: '房東', fields: [
     { key: 'landlord_name', label: '房東姓名' },
     { key: 'landlord_phone', label: '房東電話' },
-  ] },
-  { title: '緊急聯絡', fields: [
-    { key: 'emergency_name', label: '緊急聯絡人' },
-    { key: 'emergency_phone', label: '緊急聯絡電話' },
   ] },
 ]
 
@@ -78,9 +69,9 @@ const TABS: { key: TabKey; label: string }[] = [
 
 // 完整度計算用的關鍵欄位
 const KEY_FIELDS = [
-  'name', 'tax_id', 'phone', 'address', 'sqft', 'business_hours',
-  'monthly_rent', 'open_date', 'lease_end_date', 'bank_name', 'bank_account',
-  'pos_system', 'wifi_ssid', 'invoice_machine', 'owner_name', 'landlord_name', 'emergency_name',
+  'name', 'tax_id', 'phone', 'address', 'sqft', 'seats', 'business_hours',
+  'monthly_rent', 'deposit', 'open_date', 'sign_date', 'lease_end_date',
+  'bank_name', 'bank_account', 'pos_system', 'wifi_ssid', 'owner_name', 'landlord_name',
 ]
 
 function isFilled(v: unknown): boolean {
