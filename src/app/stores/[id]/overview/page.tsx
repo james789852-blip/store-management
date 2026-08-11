@@ -458,6 +458,12 @@ export default function OverviewPage() {
             </span>
             <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight mt-1.5">{store.name}</h1>
             {store.address && <p className="text-xs text-white/80 mt-1">📍 {store.address}{store.sqft != null ? ` · ${store.sqft} 坪` : ''}</p>}
+            {(store.tax_id || store.phone) && (
+              <p className="text-xs text-white/75 mt-0.5 flex flex-wrap gap-x-3">
+                {store.tax_id && <span>統編 {store.tax_id}</span>}
+                {store.phone && <span>☎ {store.phone}</span>}
+              </p>
+            )}
           </div>
         </div>
 
