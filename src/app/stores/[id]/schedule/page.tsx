@@ -51,6 +51,11 @@ function taskPct(item: BuildSchedule): number {
   return Math.min(100, Math.max(0, Math.round(((t - s) / (e - s)) * 100)))
 }
 
+// 兩個日期相差天數(to - from)
+function daysDiff(from: string, to: string): number {
+  return Math.round((new Date(to).getTime() - new Date(from).getTime()) / 86400000)
+}
+
 // 點一下循環:待開始 → 進行中 → 完成 → 待開始
 const NEXT_STATUS: Record<ScheduleStatus, ScheduleStatus> = {
   pending: 'ongoing', ongoing: 'done', done: 'pending', overdue: 'done',
@@ -679,6 +684,21 @@ export default function SchedulePage() {
   const ongoingCount = items.filter(i => i.status === 'ongoing' && !isOverdue(i)).length
   const overdueCount = items.filter(i => isOverdue(i)).length
 
+  // 各狀態分佈 + 整體進度 + 建置期間
+  const dist: Record<ScheduleStatus, number> = { done: doneCount, ongoing: ongoingCount, pending: 0, overdue: overdueCount }
+  dist.pending = totalCount - dist.done - dist.ongoing - dist.overdue
+  const overallPct = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0
+  const STAT_META: { key: ScheduleStatus; label: string; color: string }[] = [
+    { key: 'done', label: '完成', color: '#1D9E75' },
+    { key: 'ongoing', label: '進行中', color: '#185FA5' },
+    { key: 'pending', label: '待開始', color: '#C8C7BF' },
+    { key: 'overdue', label: '已逾期', color: '#D94F4F' },
+  ]
+  const dated = items.filter(i => i.start_date || i.end_date)
+  const minStart = dated.map(i => i.start_date || i.end_date!).sort()[0]
+  const maxEnd = dated.map(i => i.end_date || i.start_date!).sort().slice(-1)[0]
+  const ringC = 2 * Math.PI * 26
+
   if (loading) {
     return <div className="flex items-center justify-center py-32 text-gray-400">載入中...</div>
   }
@@ -691,14 +711,7 @@ export default function SchedulePage() {
         <div className="flex flex-wrap items-start justify-between gap-3 mb-5 sm:mb-6">
           <div>
             <h1 className="text-xl sm:text-2xl font-bold text-gray-900">建置排程</h1>
-            <div className="flex flex-wrap items-center gap-3 mt-1.5 text-sm text-gray-400">
-              <span>共 {totalCount} 項工項</span>
-              <span className="text-green-600 font-medium">完成 {doneCount}</span>
-              <span className="text-blue-600 font-medium">進行中 {ongoingCount}</span>
-              {overdueCount > 0 && (
-                <span className="text-red-500 font-medium">已逾期 {overdueCount}</span>
-              )}
-            </div>
+            <p className="text-sm text-gray-400 mt-1">共 {totalCount} 項工項{minStart && maxEnd ? ` · 期間 ${minStart} ~ ${maxEnd}` : ''}</p>
           </div>
           <div className="flex gap-2">
             <button
@@ -723,6 +736,51 @@ export default function SchedulePage() {
             </button>
           </div>
         </div>
+
+        {/* 進度總覽 hero */}
+        {items.length > 0 && (
+          <div className="lp-card p-5 mb-5">
+            <div className="flex items-center gap-5">
+              <div className="shrink-0 relative w-[76px] h-[76px]">
+                <svg className="w-[76px] h-[76px] -rotate-90" viewBox="0 0 60 60">
+                  <circle cx="30" cy="30" r="26" fill="none" stroke="#EEEDEA" strokeWidth="6" />
+                  <circle cx="30" cy="30" r="26" fill="none" stroke={overallPct === 100 ? '#1D9E75' : '#185FA5'} strokeWidth="6"
+                    strokeLinecap="round" strokeDasharray={ringC} strokeDashoffset={ringC * (1 - overallPct / 100)} />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-lg font-bold text-gray-900 leading-none">{overallPct}%</span>
+                  <span className="text-[9px] text-gray-400 mt-0.5">完成</span>
+                </div>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-semibold text-gray-800">整體進度</span>
+                  <span className="text-xs text-gray-400">{doneCount} / {totalCount} 項完成</span>
+                </div>
+                <div className="flex h-2.5 rounded-full overflow-hidden bg-gray-100">
+                  {STAT_META.map(s => dist[s.key] > 0 && (
+                    <div key={s.key} style={{ width: `${(dist[s.key] / totalCount) * 100}%`, background: s.color }} title={`${s.label} ${dist[s.key]}`} />
+                  ))}
+                </div>
+                <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3">
+                  {STAT_META.map(s => (
+                    <div key={s.key} className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full" style={{ background: s.color }} />
+                      <span className="text-xs text-gray-500">{s.label}</span>
+                      <span className={`text-xs font-semibold ${s.key === 'overdue' && dist.overdue > 0 ? 'text-brand-red' : 'text-gray-800'}`}>{dist[s.key]}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            {overdueCount > 0 && (
+              <div className="mt-4 pt-3 border-t border-gray-100 flex items-center gap-2 text-xs">
+                <span className="text-brand-red font-medium">⚠ 有 {overdueCount} 項已逾期</span>
+                <button onClick={() => { setView('list'); setFilter('overdue') }} className="text-accent hover:opacity-70 font-medium">查看 →</button>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* View toggle + Filter tabs */}
         <div className="flex flex-wrap items-center gap-3 mb-6">
@@ -807,6 +865,11 @@ export default function SchedulePage() {
               const dependsOnName = item.depends_on ? taskMap[item.depends_on] : null
               const pct = taskPct(item)
               const dot = STATUS_DOT_COLOR[ds]
+              const cd = item.end_date && ds !== 'done'
+                ? (ds === 'overdue'
+                    ? { t: `逾期 ${daysDiff(item.end_date, TODAY)} 天`, red: true }
+                    : { t: `剩 ${Math.max(0, daysDiff(TODAY, item.end_date))} 天`, red: false })
+                : null
               return (
                 <div key={item.id} className="lp-card overflow-hidden">
                   <div className="flex items-center gap-3 p-3.5">
@@ -824,6 +887,7 @@ export default function SchedulePage() {
                       <div className="flex items-center gap-2">
                         <p className={`text-sm font-medium truncate ${overdue ? 'text-brand-red' : 'text-gray-900'}`}>{item.task_name}</p>
                         <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium shrink-0 ${SCHEDULE_BADGE[ds]}`}>{SCHEDULE_STATUS_LABEL[ds]}</span>
+                        {cd && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0 ${cd.red ? 'bg-red-50 text-brand-red' : 'bg-gray-100 text-gray-500'}`}>{cd.t}</span>}
                       </div>
                       <p className="text-xs text-gray-400 truncate mt-0.5">
                         {[item.vendor, item.start_date && item.end_date ? `${item.start_date} ~ ${item.end_date}` : ''].filter(Boolean).join(' · ') || '尚未排定日期'}
