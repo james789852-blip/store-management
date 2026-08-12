@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import type { BuildSchedule, ScheduleStatus } from '@/types'
@@ -845,61 +845,104 @@ export default function SchedulePage() {
             <p className="text-sm">沒有符合的工項</p>
           </div>
         ) : (
-          <div className="space-y-2.5">
-            {filtered.map(item => {
-              const ds = displayStatus(item)
-              const overdue = isOverdue(item)
-              const expanded = expandedId === item.id
-              const dependsOnName = item.depends_on ? taskMap[item.depends_on] : null
-              const pct = taskPct(item)
-              const dot = STATUS_DOT_COLOR[ds]
-              const cd = item.end_date && ds !== 'done'
-                ? (ds === 'overdue'
-                    ? { t: `逾期 ${daysDiff(item.end_date, TODAY)} 天`, red: true }
-                    : { t: `剩 ${Math.max(0, daysDiff(TODAY, item.end_date))} 天`, red: false })
-                : null
-              return (
-                <div key={item.id} className="lp-card overflow-hidden">
-                  <div className="flex items-center gap-3 p-3.5">
-                    {/* 狀態圓點 — 點一下切換 */}
-                    <button
-                      onClick={() => cycleStatus(item)}
-                      title="點一下切換狀態(待開始→進行中→完成)"
-                      className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-sm font-bold transition-transform hover:scale-110"
-                      style={{ color: '#fff', background: dot }}
-                    >
-                      {ds === 'done' ? '✓' : ds === 'ongoing' ? '↻' : ds === 'overdue' ? '!' : '○'}
-                    </button>
-
-                    <div className="flex-1 min-w-0 cursor-pointer" onClick={() => toggleExpand(item.id)}>
-                      <div className="flex items-center gap-2">
-                        <p className={`text-sm font-medium truncate ${overdue ? 'text-brand-red' : 'text-gray-900'}`}>{item.task_name}</p>
-                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium shrink-0 ${SCHEDULE_BADGE[ds]}`}>{SCHEDULE_STATUS_LABEL[ds]}</span>
-                        {cd && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0 ${cd.red ? 'bg-red-50 text-brand-red' : 'bg-gray-100 text-gray-500'}`}>{cd.t}</span>}
-                      </div>
-                      <p className="text-xs text-gray-400 truncate mt-0.5">
-                        {[item.vendor, item.start_date && item.end_date ? `${item.start_date} ~ ${item.end_date}` : ''].filter(Boolean).join(' · ') || '尚未排定日期'}
-                      </p>
-                      <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden mt-2">
-                        <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: dot }} />
-                      </div>
-                    </div>
-
-                    <div className="flex gap-1 shrink-0">
-                      <button onClick={() => openEdit(item)} className="text-xs text-accent hover:opacity-70 px-2 py-1 font-medium">編輯</button>
-                      <button onClick={() => deleteItem(item.id)} className="text-xs text-brand-red hover:opacity-70 px-2 py-1 font-medium">刪除</button>
-                    </div>
+          <div className="relative">
+            <div className="absolute left-[11px] top-2 bottom-2 w-0.5 bg-gray-200" style={{ zIndex: 0 }} />
+            <div className="flex flex-col gap-2.5">
+              {(() => {
+                const refDate = (i: BuildSchedule) => i.start_date || i.end_date || null
+                const showToday = filter === '全部'
+                const todayMarker = (
+                  <div className="flex items-center gap-3.5">
+                    <span className="w-6 flex justify-center"><span className="w-2.5 h-2.5 rounded-full bg-accent ring-4 ring-accent-tint relative z-10" /></span>
+                    <span className="text-xs font-medium text-accent shrink-0">今天 {TODAY.slice(5).replace('-', '/')}</span>
+                    <span className="flex-1 h-px bg-accent/30" />
                   </div>
-
-                  {expanded && (
-                    <div className="px-3.5 pb-3 pt-1 border-t border-gray-100 flex flex-wrap gap-x-6 gap-y-1 text-sm">
-                      <div><span className="text-xs text-gray-400 mr-2">前置工項</span><span className="text-gray-700">{dependsOnName || '無'}</span></div>
-                      <div><span className="text-xs text-gray-400 mr-2">備註</span><span className="text-gray-700">{item.note || '—'}</span></div>
+                )
+                let lastYM = ''
+                let todayShown = false
+                let undatedShown = false
+                const out: ReactNode[] = []
+                filtered.forEach(item => {
+                  const rd = refDate(item)
+                  if (showToday && !todayShown && rd && rd > TODAY) {
+                    out.push(<div key="today">{todayMarker}</div>); todayShown = true
+                  }
+                  if (rd) {
+                    const ym = rd.slice(0, 7)
+                    if (ym !== lastYM) {
+                      lastYM = ym
+                      out.push(
+                        <div key={`m-${ym}`} className="flex items-center gap-3.5">
+                          <span className="w-6" />
+                          <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2.5 py-0.5 rounded-full">{Number(rd.slice(5, 7))} 月</span>
+                        </div>
+                      )
+                    }
+                  } else if (!undatedShown) {
+                    undatedShown = true
+                    out.push(
+                      <div key="undated" className="flex items-center gap-3.5">
+                        <span className="w-6" />
+                        <span className="text-xs text-gray-400 bg-gray-50 px-2.5 py-0.5 rounded-full">未排定日期</span>
+                      </div>
+                    )
+                  }
+                  const ds = displayStatus(item)
+                  const overdue = isOverdue(item)
+                  const expanded = expandedId === item.id
+                  const dependsOnName = item.depends_on ? taskMap[item.depends_on] : null
+                  const pct = taskPct(item)
+                  const dot = STATUS_DOT_COLOR[ds]
+                  const cd = item.end_date && ds !== 'done'
+                    ? (ds === 'overdue'
+                        ? { t: `逾期 ${daysDiff(item.end_date, TODAY)} 天`, red: true }
+                        : { t: `剩 ${Math.max(0, daysDiff(TODAY, item.end_date))} 天`, red: false })
+                    : null
+                  const meta = [
+                    item.vendor,
+                    item.start_date && item.end_date ? `${item.start_date} ~ ${item.end_date}` : '',
+                    dependsOnName ? `前置：${dependsOnName}` : '',
+                  ].filter(Boolean).join(' · ') || '尚未排定日期'
+                  out.push(
+                    <div key={item.id} className="flex gap-3.5">
+                      <button onClick={() => cycleStatus(item)} title="點一下切換狀態(待開始→進行中→完成)"
+                        className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-xs font-bold relative z-10 transition-transform hover:scale-110"
+                        style={{ color: '#fff', background: dot }}>
+                        {ds === 'done' ? '✓' : ds === 'ongoing' ? '↻' : ds === 'overdue' ? '!' : '○'}
+                      </button>
+                      <div className={`flex-1 min-w-0 lp-card ${ds === 'ongoing' ? 'border-accent' : ''}`}>
+                        <div className="flex items-start gap-2 p-3.5">
+                          <div className="flex-1 min-w-0 cursor-pointer" onClick={() => toggleExpand(item.id)}>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className={`text-sm font-medium ${overdue ? 'text-brand-red' : 'text-gray-900'}`}>{item.task_name}</p>
+                              <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium shrink-0 ${SCHEDULE_BADGE[ds]}`}>{SCHEDULE_STATUS_LABEL[ds]}</span>
+                              {cd && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0 ${cd.red ? 'bg-red-50 text-brand-red' : 'bg-gray-100 text-gray-500'}`}>{cd.t}</span>}
+                            </div>
+                            <p className="text-xs text-gray-400 mt-1">{meta}</p>
+                            {ds === 'ongoing' && (
+                              <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden mt-2">
+                                <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: dot }} />
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex gap-1 shrink-0">
+                            <button onClick={() => openEdit(item)} className="text-xs text-accent hover:opacity-70 px-2 py-1 font-medium">編輯</button>
+                            <button onClick={() => deleteItem(item.id)} className="text-xs text-brand-red hover:opacity-70 px-2 py-1 font-medium">刪除</button>
+                          </div>
+                        </div>
+                        {expanded && (
+                          <div className="px-3.5 pb-3 pt-1 border-t border-gray-100 text-sm">
+                            <span className="text-xs text-gray-400 mr-2">備註</span><span className="text-gray-700">{item.note || '—'}</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  )}
-                </div>
-              )
-            })}
+                  )
+                })
+                if (showToday && !todayShown) out.push(<div key="today-end">{todayMarker}</div>)
+                return out
+              })()}
+            </div>
           </div>
         )}
       </div>
