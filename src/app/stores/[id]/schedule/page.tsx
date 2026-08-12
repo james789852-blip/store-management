@@ -512,6 +512,7 @@ export default function SchedulePage() {
   const [loading, setLoading] = useState(true)
   const [view, setView] = useState<'list' | 'week' | 'month'>('list')
   const [filter, setFilter] = useState('全部')
+  const [sortDesc, setSortDesc] = useState(true)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [showModal, setShowModal] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
@@ -810,6 +811,18 @@ export default function SchedulePage() {
               ))}
             </div>
           )}
+
+          {/* Sort toggle (list mode only) */}
+          {view === 'list' && (
+            <button
+              onClick={() => setSortDesc(d => !d)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-500 hover:text-gray-900 transition-colors"
+              title="切換排序方向"
+            >
+              {sortDesc ? '新 → 舊' : '舊 → 新'}
+              <span className="text-gray-400">{sortDesc ? '↓' : '↑'}</span>
+            </button>
+          )}
         </div>
 
         {/* Content */}
@@ -862,9 +875,18 @@ export default function SchedulePage() {
                 let todayShown = false
                 let undatedShown = false
                 const out: ReactNode[] = []
-                filtered.forEach(item => {
+                // 排序:有日期的照方向排,未排定日期一律最後
+                const withDate = filtered.filter(i => refDate(i))
+                const noDate = filtered.filter(i => !refDate(i))
+                withDate.sort((a, b) => {
+                  const c = refDate(a)! < refDate(b)! ? -1 : refDate(a)! > refDate(b)! ? 1 : 0
+                  return sortDesc ? -c : c
+                })
+                const ordered = [...withDate, ...noDate]
+                ordered.forEach(item => {
                   const rd = refDate(item)
-                  if (showToday && !todayShown && rd && rd > TODAY) {
+                  const crossed = sortDesc ? (!!rd && rd <= TODAY) : (!!rd && rd > TODAY)
+                  if (showToday && !todayShown && crossed) {
                     out.push(<div key="today">{todayMarker}</div>); todayShown = true
                   }
                   if (rd) {
