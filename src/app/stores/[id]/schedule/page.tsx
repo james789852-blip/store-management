@@ -517,12 +517,156 @@ function WeekView({ items }: { items: BuildSchedule[] }) {
   )
 }
 
+// ── Gantt View ─────────────────────────────────────────────────────────────
+const GANTT_COLOR: Record<ScheduleStatus, string> = {
+  done: '#1D9E75', ongoing: '#185FA5', pending: '#C8C7BF', overdue: '#D94F4F',
+}
+
+function toDays(s: string): number {
+  const [y, m, d] = s.split('-').map(Number)
+  return Math.floor(Date.UTC(y, m - 1, d) / 86400000)
+}
+function fromDays(n: number): Date { return new Date(n * 86400000) }
+function fmtMD(n: number): string {
+  const d = fromDays(n)
+  return `${d.getUTCMonth() + 1}/${d.getUTCDate()}`
+}
+
+type Zoom = 'week' | 'month' | 'all'
+
+function GanttView({ items, onEdit }: { items: BuildSchedule[]; onEdit: (i: BuildSchedule) => void }) {
+  const todayD = toDays(TODAY)
+  const [zoom, setZoom] = useState<Zoom>('month')
+  const [anchor, setAnchor] = useState(TODAY)
+
+  const dated = items.filter(i => i.start_date || i.end_date)
+
+  let winStart: number, winEnd: number
+  if (zoom === 'week') {
+    const a = new Date(anchor + 'T00:00:00Z')
+    const dow = (a.getUTCDay() + 6) % 7
+    winStart = toDays(anchor) - dow
+    winEnd = winStart + 6
+  } else if (zoom === 'month') {
+    const [y, m] = anchor.split('-').map(Number)
+    winStart = Math.floor(Date.UTC(y, m - 1, 1) / 86400000)
+    winEnd = Math.floor(Date.UTC(y, m, 0) / 86400000)
+  } else if (dated.length === 0) {
+    winStart = todayD; winEnd = todayD + 30
+  } else {
+    winStart = Math.min(...dated.map(i => toDays(i.start_date || i.end_date!)))
+    winEnd = Math.max(...dated.map(i => toDays(i.end_date || i.start_date!)))
+  }
+  const totalDays = Math.max(1, winEnd - winStart + 1)
+
+  const rows = dated
+    .map(i => ({ item: i, s: toDays(i.start_date || i.end_date!), e: toDays(i.end_date || i.start_date!) }))
+    .filter(r => r.e >= winStart && r.s <= winEnd)
+    .sort((a, b) => a.s - b.s)
+  const undated = items.filter(i => !i.start_date && !i.end_date)
+
+  const ticks: number[] = []
+  if (zoom === 'week') { for (let d = winStart; d <= winEnd; d++) ticks.push(d) }
+  else if (zoom === 'month') { for (let d = winStart; d <= winEnd; d += 7) ticks.push(d) }
+  else { for (let d = winStart; d <= winEnd; d += Math.max(7, Math.ceil(totalDays / 6))) ticks.push(d) }
+
+  const minTrack = zoom === 'week' ? 420 : zoom === 'month' ? 620 : 820
+  const pct = (d: number) => `${((d - winStart) / totalDays) * 100}%`
+
+  function shift(dir: number) {
+    const a = new Date(anchor + 'T00:00:00Z')
+    if (zoom === 'week') a.setUTCDate(a.getUTCDate() + dir * 7)
+    else a.setUTCMonth(a.getUTCMonth() + dir)
+    setAnchor(a.toISOString().slice(0, 10))
+  }
+
+  const rangeLabel = zoom === 'week'
+    ? `${fmtMD(winStart)} ~ ${fmtMD(winEnd)}`
+    : zoom === 'month'
+      ? `${fromDays(winStart).getUTCFullYear()} 年 ${fromDays(winStart).getUTCMonth() + 1} 月`
+      : '全部工程'
+
+  return (
+    <div className="lp-card p-4 sm:p-5">
+      <div className="flex items-center justify-between gap-2 mb-4 flex-wrap">
+        <div className="flex gap-1 bg-gray-50 rounded-lg p-1">
+          {([['week', '本週'], ['month', '本月'], ['all', '全程']] as [Zoom, string][]).map(([z, l]) => (
+            <button key={z} onClick={() => setZoom(z)} className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${zoom === z ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'}`}>{l}</button>
+          ))}
+        </div>
+        <div className="flex items-center gap-1">
+          {zoom !== 'all' && <button onClick={() => shift(-1)} className="text-gray-400 hover:text-gray-700 px-2 py-1 text-sm">←</button>}
+          <span className="text-sm font-semibold text-gray-700 min-w-[92px] text-center">{rangeLabel}</span>
+          {zoom !== 'all' && <button onClick={() => shift(1)} className="text-gray-400 hover:text-gray-700 px-2 py-1 text-sm">→</button>}
+          {zoom !== 'all' && <button onClick={() => setAnchor(TODAY)} className="text-xs text-accent hover:opacity-70 ml-1">今天</button>}
+        </div>
+      </div>
+
+      {rows.length === 0 ? (
+        <p className="text-sm text-gray-400 text-center py-10">此區間沒有排定工項</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <div style={{ minWidth: minTrack + 120 }}>
+            <div className="flex">
+              <div className="w-[120px] shrink-0 sticky left-0 bg-white z-10" />
+              <div className="flex-1 relative h-5">
+                {ticks.map(t => <span key={t} className="absolute text-[11px] text-gray-400" style={{ left: pct(t) }}>{fmtMD(t)}</span>)}
+              </div>
+            </div>
+            {rows.map(({ item, s, e }) => {
+              const ds = displayStatus(item)
+              const cs = Math.max(s, winStart)
+              const ce = Math.min(e, winEnd)
+              return (
+                <div key={item.id} className="flex items-center h-9">
+                  <div className="w-[120px] shrink-0 sticky left-0 bg-white z-10 pr-2 text-[13px] text-gray-700 truncate" title={item.task_name}>{item.task_name}</div>
+                  <div className="flex-1 relative h-full">
+                    {todayD >= winStart && todayD <= winEnd && (
+                      <div className="absolute top-0 bottom-0 w-0.5 bg-accent/50" style={{ left: pct(todayD) }} />
+                    )}
+                    <button onClick={() => onEdit(item)}
+                      className="absolute top-1.5 h-6 rounded-md hover:brightness-95 transition-all flex items-center px-1.5 overflow-hidden"
+                      style={{ left: pct(cs), width: `calc(${((ce - cs + 1) / totalDays) * 100}% - 2px)`, background: GANTT_COLOR[ds], minWidth: 10 }}
+                      title={`${item.task_name}${item.vendor ? ' / ' + item.vendor : ''}\n${item.start_date || '?'} ~ ${item.end_date || '?'}`}>
+                      <span className="text-[10px] text-white/90 truncate">{SCHEDULE_STATUS_LABEL[ds]}</span>
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      <div className="flex items-center gap-3 mt-4 pt-3 border-t border-gray-100 flex-wrap">
+        {(['done', 'ongoing', 'pending', 'overdue'] as ScheduleStatus[]).map(s => (
+          <span key={s} className="flex items-center gap-1.5 text-xs text-gray-500">
+            <span className="w-3 h-3 rounded" style={{ background: GANTT_COLOR[s] }} />{SCHEDULE_STATUS_LABEL[s]}
+          </span>
+        ))}
+        <span className="text-xs text-accent ml-auto">▏今天</span>
+      </div>
+
+      {undated.length > 0 && (
+        <div className="mt-3 pt-3 border-t border-gray-100">
+          <p className="text-[11px] text-gray-400 mb-1.5">未排定日期（不在時間軸上）</p>
+          <div className="flex flex-wrap gap-1.5">
+            {undated.map(i => (
+              <button key={i.id} onClick={() => onEdit(i)} className={`text-xs px-2 py-0.5 rounded-full font-medium ${SCHEDULE_BADGE[displayStatus(i)]}`}>{i.task_name}</button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Main Page ──────────────────────────────────────────────────────────────
 export default function SchedulePage() {
   const { id } = useParams<{ id: string }>()
   const [items, setItems] = useState<BuildSchedule[]>([])
   const [loading, setLoading] = useState(true)
-  const [view, setView] = useState<'list' | 'week' | 'month'>('list')
+  const [view, setView] = useState<'list' | 'gantt' | 'week' | 'month'>('list')
   const [filter, setFilter] = useState('全部')
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [showModal, setShowModal] = useState(false)
@@ -788,6 +932,7 @@ export default function SchedulePage() {
           <div className="flex gap-1 bg-white rounded-xl border border-gray-200 p-1">
             {([
               { key: 'list',  label: '時間軸' },
+              { key: 'gantt', label: '甘特圖' },
               { key: 'week',  label: '週視圖' },
               { key: 'month', label: '月曆' },
             ] as const).map(v => (
@@ -844,6 +989,8 @@ export default function SchedulePage() {
               </button>
             </div>
           </div>
+        ) : view === 'gantt' ? (
+          <GanttView items={items} onEdit={openEdit} />
         ) : view === 'week' ? (
           <div className="overflow-x-auto rounded-2xl">
             <div className="min-w-[560px]"><WeekView items={items} /></div>
