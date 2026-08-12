@@ -17,11 +17,11 @@ const FILTER_TABS: Array<{ key: string; label: string }> = [
   { key: 'overdue', label: '已逾期' },
 ]
 
-const CAL_STATUS_STYLE: Record<ScheduleStatus, string> = {
-  done:    'bg-green-100 text-green-800',
-  ongoing: 'bg-blue-100 text-blue-800',
-  pending: 'bg-gray-100 text-gray-600',
-  overdue: 'bg-red-100 text-red-700',
+const CAL_PILL: Record<ScheduleStatus, { bg: string; fg: string; bar: string }> = {
+  done:    { bg: '#E6F6F1', fg: '#0F6E56', bar: '#1D9E75' },
+  ongoing: { bg: '#E3EEF8', fg: '#185FA5', bar: '#185FA5' },
+  pending: { bg: '#F3F4F6', fg: '#6B7280', bar: '#C8C7BF' },
+  overdue: { bg: '#FBE9E9', fg: '#A32D2D', bar: '#D94F4F' },
 }
 
 const CAL_DOT: Record<ScheduleStatus, string> = {
@@ -173,40 +173,31 @@ function MonthCalendarView({ items }: { items: BuildSchedule[] }) {
   const undatedItems = items.filter(i => !i.start_date && !i.end_date)
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-      {/* Navigation */}
-      <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
-        <button onClick={prevMonth}
-          className="text-sm text-gray-500 hover:text-gray-800 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors">
-          ← 上個月
-        </button>
-        <div className="flex items-center gap-3">
-          <p className="text-base font-bold text-gray-800">{year}年{month + 1}月</p>
-          <button
-            onClick={() => { setYear(now.getFullYear()); setMonth(now.getMonth()) }}
-            className="text-xs text-accent hover:text-accent px-2.5 py-1 rounded-lg hover:bg-accent-tint font-medium border border-gray-200 transition-colors">
-            本月
-          </button>
+    <div className="lp-card overflow-hidden">
+      {/* Nav */}
+      <div className="flex items-center justify-between px-4 sm:px-5 py-3.5">
+        <div className="flex items-center gap-2">
+          <p className="text-base font-bold text-gray-900">{year} 年 {month + 1} 月</p>
+          <button onClick={() => { setYear(now.getFullYear()); setMonth(now.getMonth()); setSelectedDay(null) }}
+            className="text-xs text-accent hover:opacity-70 font-medium px-2 py-0.5 rounded-md hover:bg-accent-tint transition-colors">回今天</button>
         </div>
-        <button onClick={nextMonth}
-          className="text-sm text-gray-500 hover:text-gray-800 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors">
-          下個月 →
-        </button>
+        <div className="flex items-center gap-1">
+          <button onClick={prevMonth} className="w-8 h-8 rounded-lg text-lg text-gray-400 hover:text-gray-800 hover:bg-gray-100 flex items-center justify-center transition-colors" aria-label="上個月">‹</button>
+          <button onClick={nextMonth} className="w-8 h-8 rounded-lg text-lg text-gray-400 hover:text-gray-800 hover:bg-gray-100 flex items-center justify-center transition-colors" aria-label="下個月">›</button>
+        </div>
       </div>
 
-      {/* Day-of-week headers */}
-      <div className="grid grid-cols-7 bg-gray-50 border-b border-gray-100">
+      {/* Weekday header */}
+      <div className="grid grid-cols-7 px-1.5">
         {['一', '二', '三', '四', '五', '六', '日'].map((d, i) => (
-          <div key={d} className={`py-2 text-center text-xs font-semibold ${i >= 5 ? 'text-rose-400' : 'text-gray-400'}`}>
-            週{d}
-          </div>
+          <div key={d} className={`py-2 text-center text-[11px] font-medium ${i >= 5 ? 'text-gray-300' : 'text-gray-400'}`}>{d}</div>
         ))}
       </div>
 
-      {/* Calendar grid */}
-      <div>
+      {/* Grid */}
+      <div className="px-1.5 pb-1.5">
         {weeks.map((week, wi) => (
-          <div key={wi} className="grid grid-cols-7 border-b border-gray-100 last:border-b-0" style={{ minHeight: 100 }}>
+          <div key={wi} className="grid grid-cols-7">
             {week.map(cell => {
               const tasks = cell.inMonth ? getDayTasks(cell.dateStr) : []
               const isSelected = selectedDay === cell.dateStr
@@ -214,36 +205,38 @@ function MonthCalendarView({ items }: { items: BuildSchedule[] }) {
                 <div
                   key={cell.dateStr}
                   onClick={() => { if (!cell.inMonth) return; setSelectedDay(d => d === cell.dateStr ? null : cell.dateStr) }}
-                  className={`border-r border-gray-100 last:border-r-0 p-2 transition-colors ${
-                    !cell.inMonth ? 'bg-gray-50/50' :
-                    isSelected ? 'bg-accent-tint cursor-pointer' :
-                    cell.isWeekend ? 'bg-rose-50/20 hover:bg-rose-50/50 cursor-pointer' :
+                  className={`min-h-[92px] rounded-xl p-1.5 m-0.5 transition-colors ${
+                    !cell.inMonth ? 'opacity-40' :
+                    isSelected ? 'bg-accent-tint ring-1 ring-accent/40 cursor-pointer' :
                     'hover:bg-gray-50 cursor-pointer'
                   }`}
                 >
-                  <div className="flex justify-end mb-1">
-                    <span className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full ${
-                      cell.isToday ? 'bg-gray-900 text-white' :
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-[10px] text-gray-300">{tasks.length > 0 ? `${tasks.length} 項` : ''}</span>
+                    <span className={`text-xs font-semibold w-6 h-6 flex items-center justify-center rounded-full ${
+                      cell.isToday ? 'bg-accent text-white' :
                       !cell.inMonth ? 'text-gray-300' :
-                      cell.isWeekend ? 'text-rose-400' :
-                      'text-gray-600'
+                      cell.isWeekend ? 'text-gray-400' : 'text-gray-600'
                     }`}>
                       {cell.dayNum}
                     </span>
                   </div>
-                  <div className="space-y-0.5">
-                    {tasks.slice(0, 3).map(task => (
-                      <div
-                        key={task.id}
-                        className={`text-[10px] px-1.5 py-0.5 rounded font-medium truncate ${CAL_STATUS_STYLE[displayStatus(task)]}`}
-                        title={`${task.task_name}${task.vendor ? ` ／ ${task.vendor}` : ''} | ${task.start_date} → ${task.end_date}`}
-                      >
-                        {task.start_date === cell.dateStr && '▶ '}{task.task_name}
-                      </div>
-                    ))}
-                    {tasks.length > 3 && (
-                      <div className="text-[10px] text-gray-400 pl-1">+{tasks.length - 3} 更多</div>
-                    )}
+                  <div className="space-y-1">
+                    {tasks.slice(0, 3).map(task => {
+                      const p = CAL_PILL[displayStatus(task)]
+                      const isStart = task.start_date === cell.dateStr
+                      return (
+                        <div key={task.id}
+                          className="text-[10px] leading-tight px-1.5 py-0.5 rounded-md truncate font-medium flex items-center gap-1"
+                          style={{ background: p.bg, color: p.fg, borderLeft: `3px solid ${p.bar}` }}
+                          title={`${task.task_name}${task.vendor ? ` ／ ${task.vendor}` : ''} | ${task.start_date} → ${task.end_date}`}
+                        >
+                          {isStart && <span style={{ color: p.bar }}>●</span>}
+                          <span className="truncate">{task.task_name}</span>
+                        </div>
+                      )
+                    })}
+                    {tasks.length > 3 && <div className="text-[10px] text-gray-400 pl-1">+{tasks.length - 3}</div>}
                   </div>
                 </div>
               )
@@ -252,29 +245,26 @@ function MonthCalendarView({ items }: { items: BuildSchedule[] }) {
         ))}
       </div>
 
-      {/* Selected day detail panel */}
+      {/* Selected day */}
       {selectedDay && (
-        <div className="border-t border-gray-100 bg-accent-tint/80 px-5 py-4">
+        <div className="border-t border-gray-100 bg-accent-tint/50 px-4 sm:px-5 py-4">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-sm font-bold text-accent">📅 {selectedDay} 工項</p>
-            <button onClick={() => setSelectedDay(null)}
-              className="text-xs text-accent hover:text-accent px-2 py-0.5 rounded-lg hover:bg-accent-tint">✕ 關閉</button>
+            <p className="text-sm font-semibold text-gray-800">📅 {selectedDay}</p>
+            <button onClick={() => setSelectedDay(null)} className="text-xs text-gray-400 hover:text-gray-700">關閉 ✕</button>
           </div>
           {selectedTasks.length === 0 ? (
-            <p className="text-sm text-accent">當日無進行中的工項</p>
+            <p className="text-sm text-gray-400">當日無工項</p>
           ) : (
             <ul className="space-y-2">
               {selectedTasks.map(item => {
                 const ds = displayStatus(item)
                 return (
-                  <li key={item.id} className="flex items-center gap-3 text-sm bg-white/70 rounded-xl px-3 py-2">
-                    <div className={`w-2 h-2 rounded-sm flex-shrink-0 ${CAL_DOT[ds]}`} />
-                    <span className="font-semibold text-gray-800">{item.task_name}</span>
-                    {item.vendor && <span className="text-gray-400 text-xs">{item.vendor}</span>}
-                    <span className="text-xs text-gray-300 ml-1">{item.start_date} → {item.end_date}</span>
-                    <span className={`ml-auto text-xs px-2 py-0.5 rounded-full font-medium ${SCHEDULE_BADGE[ds]}`}>
-                      {SCHEDULE_STATUS_LABEL[ds]}
-                    </span>
+                  <li key={item.id} className="flex items-center gap-3 text-sm bg-white rounded-xl px-3 py-2 border border-gray-100">
+                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: CAL_PILL[ds].bar }} />
+                    <span className="font-medium text-gray-800 truncate">{item.task_name}</span>
+                    {item.vendor && <span className="text-gray-400 text-xs shrink-0 hidden sm:inline">{item.vendor}</span>}
+                    <span className="text-xs text-gray-300 ml-auto shrink-0 hidden sm:inline">{item.start_date} → {item.end_date}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium shrink-0 ${SCHEDULE_BADGE[ds]}`}>{SCHEDULE_STATUS_LABEL[ds]}</span>
                   </li>
                 )
               })}
@@ -283,29 +273,27 @@ function MonthCalendarView({ items }: { items: BuildSchedule[] }) {
         </div>
       )}
 
-      {/* Undated items */}
+      {/* Undated */}
       {undatedItems.length > 0 && (
-        <div className="px-5 py-3 border-t border-gray-100 bg-gray-50">
-          <p className="text-xs text-gray-400 mb-2">未設定日期</p>
+        <div className="px-4 sm:px-5 py-3 border-t border-gray-100">
+          <p className="text-[11px] text-gray-400 mb-2">未設定日期</p>
           <div className="flex flex-wrap gap-1.5">
             {undatedItems.map(item => (
-              <span key={item.id} className={`text-xs px-2 py-0.5 rounded-full font-medium ${SCHEDULE_BADGE[displayStatus(item)]}`}>
-                {item.task_name}
-              </span>
+              <span key={item.id} className={`text-xs px-2 py-0.5 rounded-full font-medium ${SCHEDULE_BADGE[displayStatus(item)]}`}>{item.task_name}</span>
             ))}
           </div>
         </div>
       )}
 
       {/* Legend */}
-      <div className="flex items-center gap-4 px-5 py-3 border-t border-gray-100 bg-gray-50 flex-wrap">
+      <div className="flex items-center gap-4 px-4 sm:px-5 py-3 border-t border-gray-100 flex-wrap">
         {(['done', 'ongoing', 'pending', 'overdue'] as ScheduleStatus[]).map(s => (
           <div key={s} className="flex items-center gap-1.5">
-            <div className={`w-3 h-3 rounded ${CAL_STATUS_STYLE[s]}`} />
+            <span className="w-2.5 h-2.5 rounded-full" style={{ background: CAL_PILL[s].bar }} />
             <span className="text-xs text-gray-500">{SCHEDULE_STATUS_LABEL[s]}</span>
           </div>
         ))}
-        <span className="text-xs text-gray-400 ml-auto">點選日期查看工項詳情</span>
+        <span className="text-xs text-gray-300 ml-auto hidden sm:inline">點日期看當天工項</span>
       </div>
     </div>
   )
@@ -517,156 +505,12 @@ function WeekView({ items }: { items: BuildSchedule[] }) {
   )
 }
 
-// ── Gantt View ─────────────────────────────────────────────────────────────
-const GANTT_COLOR: Record<ScheduleStatus, string> = {
-  done: '#1D9E75', ongoing: '#185FA5', pending: '#C8C7BF', overdue: '#D94F4F',
-}
-
-function toDays(s: string): number {
-  const [y, m, d] = s.split('-').map(Number)
-  return Math.floor(Date.UTC(y, m - 1, d) / 86400000)
-}
-function fromDays(n: number): Date { return new Date(n * 86400000) }
-function fmtMD(n: number): string {
-  const d = fromDays(n)
-  return `${d.getUTCMonth() + 1}/${d.getUTCDate()}`
-}
-
-type Zoom = 'week' | 'month' | 'all'
-
-function GanttView({ items, onEdit }: { items: BuildSchedule[]; onEdit: (i: BuildSchedule) => void }) {
-  const todayD = toDays(TODAY)
-  const [zoom, setZoom] = useState<Zoom>('month')
-  const [anchor, setAnchor] = useState(TODAY)
-
-  const dated = items.filter(i => i.start_date || i.end_date)
-
-  let winStart: number, winEnd: number
-  if (zoom === 'week') {
-    const a = new Date(anchor + 'T00:00:00Z')
-    const dow = (a.getUTCDay() + 6) % 7
-    winStart = toDays(anchor) - dow
-    winEnd = winStart + 6
-  } else if (zoom === 'month') {
-    const [y, m] = anchor.split('-').map(Number)
-    winStart = Math.floor(Date.UTC(y, m - 1, 1) / 86400000)
-    winEnd = Math.floor(Date.UTC(y, m, 0) / 86400000)
-  } else if (dated.length === 0) {
-    winStart = todayD; winEnd = todayD + 30
-  } else {
-    winStart = Math.min(...dated.map(i => toDays(i.start_date || i.end_date!)))
-    winEnd = Math.max(...dated.map(i => toDays(i.end_date || i.start_date!)))
-  }
-  const totalDays = Math.max(1, winEnd - winStart + 1)
-
-  const rows = dated
-    .map(i => ({ item: i, s: toDays(i.start_date || i.end_date!), e: toDays(i.end_date || i.start_date!) }))
-    .filter(r => r.e >= winStart && r.s <= winEnd)
-    .sort((a, b) => a.s - b.s)
-  const undated = items.filter(i => !i.start_date && !i.end_date)
-
-  const ticks: number[] = []
-  if (zoom === 'week') { for (let d = winStart; d <= winEnd; d++) ticks.push(d) }
-  else if (zoom === 'month') { for (let d = winStart; d <= winEnd; d += 7) ticks.push(d) }
-  else { for (let d = winStart; d <= winEnd; d += Math.max(7, Math.ceil(totalDays / 6))) ticks.push(d) }
-
-  const minTrack = zoom === 'week' ? 420 : zoom === 'month' ? 620 : 820
-  const pct = (d: number) => `${((d - winStart) / totalDays) * 100}%`
-
-  function shift(dir: number) {
-    const a = new Date(anchor + 'T00:00:00Z')
-    if (zoom === 'week') a.setUTCDate(a.getUTCDate() + dir * 7)
-    else a.setUTCMonth(a.getUTCMonth() + dir)
-    setAnchor(a.toISOString().slice(0, 10))
-  }
-
-  const rangeLabel = zoom === 'week'
-    ? `${fmtMD(winStart)} ~ ${fmtMD(winEnd)}`
-    : zoom === 'month'
-      ? `${fromDays(winStart).getUTCFullYear()} 年 ${fromDays(winStart).getUTCMonth() + 1} 月`
-      : '全部工程'
-
-  return (
-    <div className="lp-card p-4 sm:p-5">
-      <div className="flex items-center justify-between gap-2 mb-4 flex-wrap">
-        <div className="flex gap-1 bg-gray-50 rounded-lg p-1">
-          {([['week', '本週'], ['month', '本月'], ['all', '全程']] as [Zoom, string][]).map(([z, l]) => (
-            <button key={z} onClick={() => setZoom(z)} className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${zoom === z ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'}`}>{l}</button>
-          ))}
-        </div>
-        <div className="flex items-center gap-1">
-          {zoom !== 'all' && <button onClick={() => shift(-1)} className="text-gray-400 hover:text-gray-700 px-2 py-1 text-sm">←</button>}
-          <span className="text-sm font-semibold text-gray-700 min-w-[92px] text-center">{rangeLabel}</span>
-          {zoom !== 'all' && <button onClick={() => shift(1)} className="text-gray-400 hover:text-gray-700 px-2 py-1 text-sm">→</button>}
-          {zoom !== 'all' && <button onClick={() => setAnchor(TODAY)} className="text-xs text-accent hover:opacity-70 ml-1">今天</button>}
-        </div>
-      </div>
-
-      {rows.length === 0 ? (
-        <p className="text-sm text-gray-400 text-center py-10">此區間沒有排定工項</p>
-      ) : (
-        <div className="overflow-x-auto">
-          <div style={{ minWidth: minTrack + 120 }}>
-            <div className="flex">
-              <div className="w-[120px] shrink-0 sticky left-0 bg-white z-10" />
-              <div className="flex-1 relative h-5">
-                {ticks.map(t => <span key={t} className="absolute text-[11px] text-gray-400" style={{ left: pct(t) }}>{fmtMD(t)}</span>)}
-              </div>
-            </div>
-            {rows.map(({ item, s, e }) => {
-              const ds = displayStatus(item)
-              const cs = Math.max(s, winStart)
-              const ce = Math.min(e, winEnd)
-              return (
-                <div key={item.id} className="flex items-center h-9">
-                  <div className="w-[120px] shrink-0 sticky left-0 bg-white z-10 pr-2 text-[13px] text-gray-700 truncate" title={item.task_name}>{item.task_name}</div>
-                  <div className="flex-1 relative h-full">
-                    {todayD >= winStart && todayD <= winEnd && (
-                      <div className="absolute top-0 bottom-0 w-0.5 bg-accent/50" style={{ left: pct(todayD) }} />
-                    )}
-                    <button onClick={() => onEdit(item)}
-                      className="absolute top-1.5 h-6 rounded-md hover:brightness-95 transition-all flex items-center px-1.5 overflow-hidden"
-                      style={{ left: pct(cs), width: `calc(${((ce - cs + 1) / totalDays) * 100}% - 2px)`, background: GANTT_COLOR[ds], minWidth: 10 }}
-                      title={`${item.task_name}${item.vendor ? ' / ' + item.vendor : ''}\n${item.start_date || '?'} ~ ${item.end_date || '?'}`}>
-                      <span className="text-[10px] text-white/90 truncate">{SCHEDULE_STATUS_LABEL[ds]}</span>
-                    </button>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      <div className="flex items-center gap-3 mt-4 pt-3 border-t border-gray-100 flex-wrap">
-        {(['done', 'ongoing', 'pending', 'overdue'] as ScheduleStatus[]).map(s => (
-          <span key={s} className="flex items-center gap-1.5 text-xs text-gray-500">
-            <span className="w-3 h-3 rounded" style={{ background: GANTT_COLOR[s] }} />{SCHEDULE_STATUS_LABEL[s]}
-          </span>
-        ))}
-        <span className="text-xs text-accent ml-auto">▏今天</span>
-      </div>
-
-      {undated.length > 0 && (
-        <div className="mt-3 pt-3 border-t border-gray-100">
-          <p className="text-[11px] text-gray-400 mb-1.5">未排定日期（不在時間軸上）</p>
-          <div className="flex flex-wrap gap-1.5">
-            {undated.map(i => (
-              <button key={i.id} onClick={() => onEdit(i)} className={`text-xs px-2 py-0.5 rounded-full font-medium ${SCHEDULE_BADGE[displayStatus(i)]}`}>{i.task_name}</button>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
 // ── Main Page ──────────────────────────────────────────────────────────────
 export default function SchedulePage() {
   const { id } = useParams<{ id: string }>()
   const [items, setItems] = useState<BuildSchedule[]>([])
   const [loading, setLoading] = useState(true)
-  const [view, setView] = useState<'list' | 'gantt' | 'week' | 'month'>('list')
+  const [view, setView] = useState<'list' | 'week' | 'month'>('list')
   const [filter, setFilter] = useState('全部')
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [showModal, setShowModal] = useState(false)
@@ -932,7 +776,6 @@ export default function SchedulePage() {
           <div className="flex gap-1 bg-white rounded-xl border border-gray-200 p-1">
             {([
               { key: 'list',  label: '時間軸' },
-              { key: 'gantt', label: '甘特圖' },
               { key: 'week',  label: '週視圖' },
               { key: 'month', label: '月曆' },
             ] as const).map(v => (
@@ -989,8 +832,6 @@ export default function SchedulePage() {
               </button>
             </div>
           </div>
-        ) : view === 'gantt' ? (
-          <GanttView items={items} onEdit={openEdit} />
         ) : view === 'week' ? (
           <div className="overflow-x-auto rounded-2xl">
             <div className="min-w-[560px]"><WeekView items={items} /></div>
