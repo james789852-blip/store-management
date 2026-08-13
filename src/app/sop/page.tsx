@@ -2,16 +2,33 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { SOP_TRADE_LABEL, SOP_TYPE_LABEL } from '@/types'
-import type { SopKnowledge, SopTrade, SopType } from '@/types'
+import { SOP_TRADE_LABEL, SOP_TYPE_LABEL, SOP_VENUE_LABEL } from '@/types'
+import type { SopKnowledge, SopTrade, SopType, SopVenue } from '@/types'
 import { SOP_TRADE_BADGE, SOP_TYPE_BADGE } from '@/lib/colors'
 import Link from 'next/link'
 
 
 const ALL_TRADES = Object.keys(SOP_TRADE_LABEL) as SopTrade[]
 const ALL_TYPES = Object.keys(SOP_TYPE_LABEL) as SopType[]
+const ALL_VENUES = Object.keys(SOP_VENUE_LABEL) as SopVenue[]
+
+// 各場域常見的建置面向（新增時的建議,也可自己打）
+const FACET_PRESETS: Record<SopVenue, string[]> = {
+  kitchen: ['空間規劃／動線', '給排水／油脂截留', '排煙空調', '冷凍冷藏／冷鏈', '電力配電', '生產設備', '消防', '衛生／HACCP', '倉儲', '證照法規'],
+  store: ['空間動線／座位', '水電', '排煙空調', '廚房設備', '外場／吧台', '招牌／門面', 'POS／網路／監視', '消防', '清潔驗收', '證照法規'],
+  general: ['證照法規', '合約', '廠商', '預算', '其他'],
+}
+
+const VENUE_BADGE: Record<SopVenue, string> = {
+  kitchen: 'bg-amber-100 text-amber-700',
+  store: 'bg-blue-100 text-blue-700',
+  general: 'bg-gray-100 text-gray-500',
+}
+const VENUE_ICON: Record<SopVenue, string> = { kitchen: '🍳', store: '🏪', general: '📋' }
 
 type FormData = {
+  venue: SopVenue
+  facet: string
   trade: SopTrade
   type: SopType
   title: string
@@ -20,12 +37,14 @@ type FormData = {
 }
 
 const EMPTY_FORM: FormData = {
-  trade: 'general', type: 'spec', title: '', tags: '', content: '',
+  venue: 'kitchen', facet: '', trade: 'general', type: 'spec', title: '', tags: '', content: '',
 }
 
 export default function SopPage() {
   const [items, setItems] = useState<SopKnowledge[]>([])
   const [loading, setLoading] = useState(true)
+  const [venueFilter, setVenueFilter] = useState<SopVenue | 'all'>('all')
+  const [facetFilter, setFacetFilter] = useState<string>('all')
   const [tradeFilter, setTradeFilter] = useState<SopTrade | 'all'>('all')
   const [typeFilter, setTypeFilter] = useState<SopType | 'all'>('all')
   const [search, setSearch] = useState('')
@@ -56,6 +75,8 @@ export default function SopPage() {
   function openEdit(item: SopKnowledge) {
     setEditing(item)
     setForm({
+      venue: item.venue,
+      facet: item.facet ?? '',
       trade: item.trade,
       type: item.type,
       title: item.title,
@@ -71,6 +92,8 @@ export default function SopPage() {
     setSaving(true)
     const tags = form.tags.split(',').map(t => t.trim()).filter(Boolean)
     const payload = {
+      venue: form.venue,
+      facet: form.facet.trim() || null,
       trade: form.trade,
       type: form.type,
       title: form.title,
@@ -99,7 +122,23 @@ export default function SopPage() {
     return acc
   }, {} as Record<SopTrade, number>)
 
+  // 場域過濾:央廚/店面時一併帶入「通用」；通用頁只看通用
+  const matchVenue = (item: SopKnowledge) =>
+    venueFilter === 'all' ? true :
+    venueFilter === 'general' ? item.venue === 'general' :
+    item.venue === venueFilter || item.venue === 'general'
+
+  // 目前場域下實際用到的面向,做成 chip
+  const venueItems = items.filter(matchVenue)
+  const facetsInView = Array.from(new Set(venueItems.map(i => i.facet).filter(Boolean))) as string[]
+  const venueCounts = ALL_VENUES.reduce((acc, v) => {
+    acc[v] = items.filter(i => i.venue === v).length
+    return acc
+  }, {} as Record<SopVenue, number>)
+
   const filtered = items.filter(item => {
+    if (!matchVenue(item)) return false
+    if (facetFilter !== 'all' && item.facet !== facetFilter) return false
     if (tradeFilter !== 'all' && item.trade !== tradeFilter) return false
     if (typeFilter !== 'all' && item.type !== typeFilter) return false
     if (search) {
@@ -124,6 +163,18 @@ export default function SopPage() {
     `px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors flex-shrink-0 ${
       active ? 'bg-violet-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
     }`
+
+  const venuePillCls = (active: boolean) =>
+    `flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
+      active ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'
+    }`
+
+  const facetChipCls = (active: boolean) =>
+    `text-xs px-3 py-1.5 rounded-full font-medium transition-colors whitespace-nowrap ${
+      active ? 'bg-accent text-white' : 'bg-white border border-gray-200 text-gray-500 hover:border-accent'
+    }`
+
+  const facetSuggestions = Array.from(new Set([...(FACET_PRESETS[form.venue] || []), ...facetsInView]))
 
   return (
     <div className="h-screen flex flex-col" style={{ background: '#F5F4F0' }}>
@@ -237,6 +288,29 @@ export default function SopPage() {
 
         {/* Main content */}
         <main className="flex-1 overflow-y-auto min-w-0">
+          {/* 場域切換 央廚 / 店面 / 通用 */}
+          <div className="bg-white rounded-2xl border border-gray-200 p-1 mb-3 flex gap-1 overflow-x-auto">
+            <button onClick={() => { setVenueFilter('all'); setFacetFilter('all') }} className={venuePillCls(venueFilter === 'all')}>
+              全部 <span className="opacity-60 text-xs">{items.length}</span>
+            </button>
+            {ALL_VENUES.map(v => (
+              <button key={v} onClick={() => { setVenueFilter(v); setFacetFilter('all') }} className={venuePillCls(venueFilter === v)}>
+                {VENUE_ICON[v]} {SOP_VENUE_LABEL[v]}
+                {venueCounts[v] > 0 && <span className="opacity-60 text-xs">{venueCounts[v]}</span>}
+              </button>
+            ))}
+          </div>
+
+          {/* 建置面向 chips */}
+          {facetsInView.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mb-4">
+              <button onClick={() => setFacetFilter('all')} className={facetChipCls(facetFilter === 'all')}>全部面向</button>
+              {facetsInView.map(f => (
+                <button key={f} onClick={() => setFacetFilter(f)} className={facetChipCls(facetFilter === f)}>{f}</button>
+              ))}
+            </div>
+          )}
+
           {loading ? (
             <div className="flex items-center justify-center py-32 text-gray-400">載入中...</div>
           ) : filtered.length === 0 ? (
@@ -260,9 +334,14 @@ export default function SopPage() {
                   onClick={() => setReading(item)}>
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex gap-2 flex-wrap flex-1 min-w-0">
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${SOP_TRADE_BADGE[item.trade]}`}>
-                        {SOP_TRADE_LABEL[item.trade]}
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${VENUE_BADGE[item.venue]}`}>
+                        {VENUE_ICON[item.venue]} {SOP_VENUE_LABEL[item.venue]}
                       </span>
+                      {item.facet && (
+                        <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-accent-tint text-accent">
+                          {item.facet}
+                        </span>
+                      )}
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${SOP_TYPE_BADGE[item.type]}`}>
                         {SOP_TYPE_LABEL[item.type]}
                       </span>
@@ -304,6 +383,12 @@ export default function SopPage() {
             <div className="p-4 sm:p-6 border-b border-gray-100 flex items-start justify-between gap-3">
               <div className="flex-1 min-w-0">
                 <div className="flex gap-2 mb-2 flex-wrap">
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${VENUE_BADGE[reading.venue]}`}>
+                    {VENUE_ICON[reading.venue]} {SOP_VENUE_LABEL[reading.venue]}
+                  </span>
+                  {reading.facet && (
+                    <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-accent-tint text-accent">{reading.facet}</span>
+                  )}
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${SOP_TRADE_BADGE[reading.trade]}`}>
                     {SOP_TRADE_LABEL[reading.trade]}
                   </span>
@@ -349,6 +434,23 @@ export default function SopPage() {
               <h2 className="font-bold text-gray-900 text-lg">{editing ? '編輯知識' : '新增知識'}</h2>
             </div>
             <div className="flex-1 overflow-y-auto px-5 sm:px-6 py-5 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-sm font-medium text-gray-700">場域</label>
+                  <select className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+                    value={form.venue} onChange={e => setForm(f => ({ ...f, venue: e.target.value as SopVenue }))}>
+                    {ALL_VENUES.map(v => <option key={v} value={v}>{SOP_VENUE_LABEL[v]}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">建置面向</label>
+                  <input list="facet-suggestions"
+                    className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+                    value={form.facet} onChange={e => setForm(f => ({ ...f, facet: e.target.value }))}
+                    placeholder="例：給排水／油脂截留（可自己打）" />
+                  <datalist id="facet-suggestions">{facetSuggestions.map(f => <option key={f} value={f} />)}</datalist>
+                </div>
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-sm font-medium text-gray-700">工種</label>

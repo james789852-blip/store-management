@@ -336,6 +336,13 @@ export interface DesignFile {
 // ── SOP Knowledge ─────────────────────────────────────────────
 export type SopTrade = 'plumbing' | 'carpentry' | 'masonry' | 'equipment' | 'admin' | 'painting' | 'signage' | 'general'
 export type SopType = 'spec' | 'flow' | 'pit' | 'vendor' | 'admin' | 'other'
+export type SopVenue = 'kitchen' | 'store' | 'general'
+
+export const SOP_VENUE_LABEL: Record<SopVenue, string> = {
+  kitchen: '央廚',
+  store: '店面',
+  general: '通用',
+}
 
 export const SOP_TRADE_LABEL: Record<SopTrade, string> = {
   plumbing: '水電',
@@ -359,6 +366,8 @@ export const SOP_TYPE_LABEL: Record<SopType, string> = {
 
 export interface SopKnowledge {
   id: string
+  venue: SopVenue
+  facet: string | null
   trade: SopTrade
   type: SopType
   title: string
